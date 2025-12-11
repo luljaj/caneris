@@ -144,3 +144,4 @@ function ToolsPanel({ settings, onSettingsChange, showGenreLabels, onToggleGenre
 
 export default ToolsPanel
 
+
