@@ -20,8 +20,8 @@ export function useSpotifyData(token) {
       setError(null)
 
       try {
-        // Fetch top 100 artists (or as many as available)
-        const topArtists = await fetchAllTopArtists(token, 100, 'medium_term')
+        // Fetch top 200 artists (or as many as available)
+        const topArtists = await fetchAllTopArtists(token, 200, 'medium_term')
         setArtists(topArtists)
 
         // Convert to graph data

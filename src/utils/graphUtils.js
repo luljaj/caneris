@@ -7,7 +7,7 @@ export function artistsToGraphData(artists) {
   }
 
   // Create nodes from artists
-  const nodes = artists.map((artist, index) => ({
+  const allNodes = artists.map((artist, index) => ({
     id: artist.id,
     name: artist.name,
     genres: artist.genres || [],
@@ -28,20 +28,30 @@ export function artistsToGraphData(artists) {
   // Create edges based on shared genres
   const links = []
   
-  for (let i = 0; i < nodes.length; i++) {
-    for (let j = i + 1; j < nodes.length; j++) {
-      const sharedGenres = getSharedGenres(nodes[i].genres, nodes[j].genres)
+  for (let i = 0; i < allNodes.length; i++) {
+    for (let j = i + 1; j < allNodes.length; j++) {
+      const sharedGenres = getSharedGenres(allNodes[i].genres, allNodes[j].genres)
       
       if (sharedGenres.length > 0) {
         links.push({
-          source: nodes[i].id,
-          target: nodes[j].id,
+          source: allNodes[i].id,
+          target: allNodes[j].id,
           sharedGenres,
           value: sharedGenres.length // Edge weight = number of shared genres
         })
       }
     }
   }
+
+  // Find all node IDs that have at least one connection
+  const connectedNodeIds = new Set()
+  links.forEach(link => {
+    connectedNodeIds.add(link.source)
+    connectedNodeIds.add(link.target)
+  })
+
+  // Filter out nodes with no connections
+  const nodes = allNodes.filter(node => connectedNodeIds.has(node.id))
 
   // Calculate genre clusters and assign colors
   const genreClusters = calculateGenreClusters(nodes)
@@ -58,7 +68,7 @@ function calculateNodeSize(index, total) {
   // Exponential decay: top artists are much larger
   const normalizedRank = 1 - (index / total)
   const minSize = 2
-  const maxSize = 12
+  const maxSize = 15
   return minSize + (maxSize - minSize) * Math.pow(normalizedRank, 1.5)
 }
 
@@ -86,7 +96,7 @@ function calculateGenreClusters(nodes) {
   const significantGenres = Object.entries(genreCounts)
     .filter(([_, count]) => count >= 3)
     .sort((a, b) => b[1] - a[1])
-    .slice(0, 8) // Limit to 8 clusters
+    .slice(0, 24) // Limit to 24 clusters
     .map(([genre]) => genre)
 
   // Create cluster objects
@@ -107,15 +117,32 @@ function calculateGenreClusters(nodes) {
  * Assign colors to nodes based on their primary genre cluster
  */
 function assignNodeColors(nodes, clusters) {
+  // Cosmic palette - nebula and celestial colors
   const clusterColors = [
-    '#ff6b6b', // coral red
-    '#4ecdc4', // teal
-    '#ffe66d', // yellow
-    '#95e1d3', // mint
-    '#f38181', // salmon
-    '#aa96da', // lavender
-    '#fcbad3', // pink
-    '#a8d8ea'  // sky blue
+    '#a855f7', // purple
+    '#8b5cf6', // violet
+    '#6366f1', // indigo
+    '#3b82f6', // blue
+    '#0ea5e9', // sky
+    '#06b6d4', // cyan
+    '#14b8a6', // teal
+    '#10b981', // emerald
+    '#22c55e', // green
+    '#84cc16', // lime
+    '#eab308', // yellow
+    '#f59e0b', // amber
+    '#f97316', // orange
+    '#ef4444', // red
+    '#ec4899', // pink
+    '#d946ef', // fuchsia
+    '#c084fc', // light purple
+    '#818cf8', // light indigo
+    '#60a5fa', // light blue
+    '#38bdf8', // light sky
+    '#2dd4bf', // light teal
+    '#4ade80', // light green
+    '#a3e635', // light lime
+    '#fbbf24'  // light amber
   ]
 
   const genreToColor = {}
@@ -126,7 +153,7 @@ function assignNodeColors(nodes, clusters) {
   nodes.forEach(node => {
     // Find the first genre that matches a cluster
     const matchedGenre = node.genres.find(g => genreToColor[g])
-    node.color = matchedGenre ? genreToColor[matchedGenre] : '#1DB954' // Default to Spotify green
+    node.color = matchedGenre ? genreToColor[matchedGenre] : '#6366f1' // Default to cosmic indigo
     node.primaryGenre = matchedGenre || node.genres[0] || 'unknown'
   })
 }

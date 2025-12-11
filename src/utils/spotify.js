@@ -129,21 +129,18 @@ export async function fetchTopArtists(token, limit = 50, timeRange = 'medium_ter
 }
 
 /**
- * Fetch additional artists to get up to 100
+ * Fetch additional artists to get up to 200
  * Uses offset pagination
  */
-export async function fetchAllTopArtists(token, total = 100, timeRange = 'medium_term') {
+export async function fetchAllTopArtists(token, total = 200, timeRange = 'medium_term') {
   const artists = []
   const limit = 50 // Spotify max per request
+  const numBatches = Math.ceil(total / limit)
   
-  // First batch
-  const firstBatch = await fetchTopArtists(token, limit, timeRange)
-  artists.push(...firstBatch)
-  
-  // Second batch if needed
-  if (total > 50 && firstBatch.length === 50) {
+  for (let i = 0; i < numBatches; i++) {
+    const offset = i * limit
     const response = await fetch(
-      `${SPOTIFY_API_BASE}/me/top/artists?limit=${limit}&offset=50&time_range=${timeRange}`,
+      `${SPOTIFY_API_BASE}/me/top/artists?limit=${limit}&offset=${offset}&time_range=${timeRange}`,
       {
         headers: {
           Authorization: `Bearer ${token}`
@@ -151,9 +148,19 @@ export async function fetchAllTopArtists(token, total = 100, timeRange = 'medium
       }
     )
     
-    if (response.ok) {
-      const data = await response.json()
-      artists.push(...data.items)
+    if (!response.ok) {
+      if (response.status === 401) {
+        throw new Error('Session expired. Please login again.')
+      }
+      break // Stop if we hit an error
+    }
+    
+    const data = await response.json()
+    artists.push(...data.items)
+    
+    // Stop if we got fewer than requested (no more artists available)
+    if (data.items.length < limit) {
+      break
     }
   }
   

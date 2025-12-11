@@ -1,40 +1,132 @@
-import { useRef, useCallback, useEffect, useState } from 'react'
+import { useRef, useCallback, useEffect, useState, useMemo } from 'react'
 import ForceGraph2D from 'react-force-graph-2d'
+import { forceCenter, forceX, forceY } from 'd3-force'
 import { calculateClusterCenters } from '../utils/graphUtils'
 import './SpotifyGraph.css'
+
+// Starfield configuration
+const STAR_COUNT = 200
+const TWINKLE_SPEED = 0.02
 
 function SpotifyGraph({ data, onNodeClick, showGenreLabels, settings }) {
   const graphRef = useRef()
   const containerRef = useRef()
+  const starfieldRef = useRef()
+  const starsRef = useRef([])
+  const animationRef = useRef()
+  const imageCache = useRef({})
+  
   const [dimensions, setDimensions] = useState({ width: 800, height: 600 })
   const [hoveredNode, setHoveredNode] = useState(null)
+  const [hoveredLink, setHoveredLink] = useState(null)
   const [clusterCenters, setClusterCenters] = useState([])
 
   // Default settings
   const {
-    labelOpacity = 0.8,
     nodeScale = 1,
-    linkOpacity = 0.3,
     chargeStrength = -100,
     linkDistance = 50,
-    showAllLabels = true
   } = settings || {}
+
+  // Generate stars once
+  const generateStars = useCallback((width, height) => {
+    const stars = []
+    for (let i = 0; i < STAR_COUNT; i++) {
+      stars.push({
+        x: Math.random() * width,
+        y: Math.random() * height,
+        radius: Math.random() * 1.5 + 0.5,
+        opacity: Math.random(),
+        twinkleOffset: Math.random() * Math.PI * 2,
+        twinkleSpeed: (Math.random() * 0.5 + 0.5) * TWINKLE_SPEED
+      })
+    }
+    return stars
+  }, [])
+
+  // Initialize starfield
+  useEffect(() => {
+    if (!starfieldRef.current) return
+    
+    const canvas = starfieldRef.current
+    const ctx = canvas.getContext('2d')
+    
+    starsRef.current = generateStars(dimensions.width, dimensions.height)
+    
+    let time = 0
+    const animate = () => {
+      ctx.fillStyle = '#050510'
+      ctx.fillRect(0, 0, dimensions.width, dimensions.height)
+      
+      // Draw stars with twinkling
+      starsRef.current.forEach(star => {
+        const twinkle = Math.sin(time * star.twinkleSpeed + star.twinkleOffset) * 0.5 + 0.5
+        const opacity = star.opacity * twinkle * 0.8 + 0.2
+        
+        ctx.beginPath()
+        ctx.arc(star.x, star.y, star.radius, 0, Math.PI * 2)
+        ctx.fillStyle = `rgba(255, 255, 255, ${opacity})`
+        ctx.fill()
+        
+        // Add subtle glow to brighter stars
+        if (star.radius > 1.2) {
+          ctx.beginPath()
+          ctx.arc(star.x, star.y, star.radius * 2, 0, Math.PI * 2)
+          const gradient = ctx.createRadialGradient(
+            star.x, star.y, 0,
+            star.x, star.y, star.radius * 2
+          )
+          gradient.addColorStop(0, `rgba(200, 220, 255, ${opacity * 0.3})`)
+          gradient.addColorStop(1, 'rgba(200, 220, 255, 0)')
+          ctx.fillStyle = gradient
+          ctx.fill()
+        }
+      })
+      
+      time++
+      animationRef.current = requestAnimationFrame(animate)
+    }
+    
+    animate()
+    
+    return () => {
+      if (animationRef.current) {
+        cancelAnimationFrame(animationRef.current)
+      }
+    }
+  }, [dimensions, generateStars])
 
   // Handle window resize
   useEffect(() => {
     const updateDimensions = () => {
       if (containerRef.current) {
-        setDimensions({
+        const newDimensions = {
           width: containerRef.current.clientWidth,
           height: containerRef.current.clientHeight
-        })
+        }
+        setDimensions(newDimensions)
+        starsRef.current = generateStars(newDimensions.width, newDimensions.height)
       }
     }
 
     updateDimensions()
     window.addEventListener('resize', updateDimensions)
     return () => window.removeEventListener('resize', updateDimensions)
-  }, [])
+  }, [generateStars])
+
+  // Preload images for nodes
+  useEffect(() => {
+    data.nodes.forEach(node => {
+      if (node.image && !imageCache.current[node.id]) {
+        const img = new Image()
+        img.crossOrigin = 'anonymous'
+        img.src = node.image
+        img.onload = () => {
+          imageCache.current[node.id] = img
+        }
+      }
+    })
+  }, [data.nodes])
 
   // Update cluster centers after graph simulation
   useEffect(() => {
@@ -52,69 +144,173 @@ function SpotifyGraph({ data, onNodeClick, showGenreLabels, settings }) {
     if (graphRef.current) {
       graphRef.current.d3Force('charge')?.strength(chargeStrength)
       graphRef.current.d3Force('link')?.distance(linkDistance)
+      
+      // Add center force to keep disconnected subgraphs closer together
+      graphRef.current.d3Force('center', forceCenter(0, 0))
+      graphRef.current.d3Force('x', forceX(0).strength(0.05))
+      graphRef.current.d3Force('y', forceY(0).strength(0.05))
+      
       graphRef.current.d3ReheatSimulation()
     }
   }, [chargeStrength, linkDistance])
 
-  // Custom node rendering - colored dots with names below
+  // Custom node rendering - cosmic planet style with artist images
   const nodeCanvasObject = useCallback((node, ctx, globalScale) => {
-    const baseSize = node.val || 5
-    const size = baseSize * nodeScale
+    // Guard: skip rendering if position is not yet calculated
+    if (!Number.isFinite(node.x) || !Number.isFinite(node.y)) return
+    
+    const baseSize = (node.val || 5) * nodeScale
+    const size = Math.max(6, baseSize)
     const isHovered = hoveredNode?.id === node.id
     
-    // Draw node circle
+    // Get node color with cosmic tint
+    const nodeColor = node.color || '#6366f1'
+    
+    // Draw outer glow (always present but subtle, stronger on hover)
+    const glowRadius = size * (isHovered ? 3 : 1.8)
+    const glowOpacity = isHovered ? 0.6 : 0.15
+    
+    const gradient = ctx.createRadialGradient(
+      node.x, node.y, size * 0.5,
+      node.x, node.y, glowRadius
+    )
+    gradient.addColorStop(0, `${nodeColor}${Math.round(glowOpacity * 255).toString(16).padStart(2, '0')}`)
+    gradient.addColorStop(0.5, `${nodeColor}${Math.round(glowOpacity * 0.5 * 255).toString(16).padStart(2, '0')}`)
+    gradient.addColorStop(1, 'rgba(0, 0, 0, 0)')
+    
     ctx.beginPath()
-    ctx.arc(node.x, node.y, size, 0, 2 * Math.PI)
-    ctx.fillStyle = node.color || '#1DB954'
+    ctx.arc(node.x, node.y, glowRadius, 0, Math.PI * 2)
+    ctx.fillStyle = gradient
     ctx.fill()
     
-    // Add glow/border effect on hover
-    if (isHovered) {
-      ctx.shadowColor = node.color || '#1DB954'
-      ctx.shadowBlur = 20
-      ctx.strokeStyle = '#fff'
-      ctx.lineWidth = 2
-      ctx.stroke()
-      ctx.shadowBlur = 0
+    // Draw the planet body
+    ctx.save()
+    ctx.beginPath()
+    ctx.arc(node.x, node.y, size, 0, Math.PI * 2)
+    ctx.closePath()
+    ctx.clip()
+    
+    // Try to draw the artist image
+    const cachedImage = imageCache.current[node.id]
+    if (cachedImage) {
+      try {
+        ctx.drawImage(
+          cachedImage,
+          node.x - size,
+          node.y - size,
+          size * 2,
+          size * 2
+        )
+        // Add a subtle color overlay to blend with theme
+        ctx.fillStyle = `${nodeColor}22`
+        ctx.fill()
+      } catch {
+        // Fallback to solid color
+        ctx.fillStyle = nodeColor
+        ctx.fill()
+      }
+    } else {
+      // No image available - draw gradient planet
+      const planetGradient = ctx.createRadialGradient(
+        node.x - size * 0.3, node.y - size * 0.3, 0,
+        node.x, node.y, size
+      )
+      planetGradient.addColorStop(0, lightenColor(nodeColor, 40))
+      planetGradient.addColorStop(0.7, nodeColor)
+      planetGradient.addColorStop(1, darkenColor(nodeColor, 30))
+      ctx.fillStyle = planetGradient
+      ctx.fill()
     }
-
-    // Draw name below the node (always visible or on hover based on settings)
-    if (showAllLabels || isHovered) {
+    
+    ctx.restore()
+    
+    // Add subtle ring/border
+    ctx.beginPath()
+    ctx.arc(node.x, node.y, size, 0, Math.PI * 2)
+    ctx.strokeStyle = isHovered ? 'rgba(255, 255, 255, 0.8)' : 'rgba(255, 255, 255, 0.15)'
+    ctx.lineWidth = isHovered ? 2 : 0.5
+    ctx.stroke()
+    
+    // Draw hover halo rings
+    if (isHovered) {
+      for (let i = 1; i <= 2; i++) {
+        ctx.beginPath()
+        ctx.arc(node.x, node.y, size + (i * 4), 0, Math.PI * 2)
+        ctx.strokeStyle = `rgba(255, 255, 255, ${0.3 - i * 0.1})`
+        ctx.lineWidth = 1
+        ctx.stroke()
+      }
+    }
+    
+    // Draw name label on hover
+    if (isHovered) {
       const label = node.name
-      // Font size proportional to node size
-      const fontSize = Math.max(8, Math.min(14, size * 0.6))
-      ctx.font = `500 ${fontSize}px 'Instrument Sans', sans-serif`
+      const fontSize = Math.max(11, Math.min(16, size * 0.8))
+      ctx.font = `600 ${fontSize}px 'Inter', 'Instrument Sans', system-ui, sans-serif`
       ctx.textAlign = 'center'
       ctx.textBaseline = 'top'
       
-      const labelY = node.y + size + 4
+      const labelY = node.y + size + 8
+      const textWidth = ctx.measureText(label).width
       
-      // Set opacity for labels
-      const opacity = isHovered ? 1 : labelOpacity
-      ctx.fillStyle = `rgba(240, 240, 245, ${opacity})`
-      ctx.fillText(label, node.x, labelY)
+      // Draw label background
+      ctx.fillStyle = 'rgba(5, 5, 16, 0.85)'
+      ctx.beginPath()
+      ctx.roundRect(
+        node.x - textWidth / 2 - 8,
+        labelY - 2,
+        textWidth + 16,
+        fontSize + 8,
+        4
+      )
+      ctx.fill()
+      
+      // Draw label border
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)'
+      ctx.lineWidth = 1
+      ctx.stroke()
+      
+      // Draw label text
+      ctx.fillStyle = '#ffffff'
+      ctx.fillText(label, node.x, labelY + 2)
     }
-  }, [hoveredNode, nodeScale, labelOpacity, showAllLabels])
+  }, [hoveredNode, nodeScale])
 
-  // Custom link rendering
+  // Custom link rendering - constellation lines
   const linkCanvasObject = useCallback((link, ctx) => {
     const start = link.source
     const end = link.target
     
     if (!start.x || !end.x) return
     
-    // Calculate opacity based on edge weight
-    const maxWeight = 5
-    const baseOpacity = 0.05 + (Math.min(link.value, maxWeight) / maxWeight) * 0.3
-    const opacity = baseOpacity * linkOpacity
+    const isHovered = hoveredLink === link || 
+      hoveredNode?.id === start.id || 
+      hoveredNode?.id === end.id
     
+    // Default: very subtle dark constellation lines
+    // Hovered: glowing white lines
+    const baseOpacity = isHovered ? 0.8 : 0.08
+    const lineWidth = isHovered ? 1.5 : 0.5
+    const color = isHovered ? 'rgba(255, 255, 255,' : 'rgba(100, 120, 150,'
+    
+    // Draw the line
     ctx.beginPath()
     ctx.moveTo(start.x, start.y)
     ctx.lineTo(end.x, end.y)
-    ctx.strokeStyle = `rgba(29, 185, 84, ${opacity})`
-    ctx.lineWidth = Math.max(0.5, link.value * 0.3)
+    ctx.strokeStyle = `${color} ${baseOpacity})`
+    ctx.lineWidth = lineWidth
     ctx.stroke()
-  }, [linkOpacity])
+    
+    // Add glow effect on hover
+    if (isHovered) {
+      ctx.beginPath()
+      ctx.moveTo(start.x, start.y)
+      ctx.lineTo(end.x, end.y)
+      ctx.strokeStyle = 'rgba(150, 180, 255, 0.3)'
+      ctx.lineWidth = 4
+      ctx.stroke()
+    }
+  }, [hoveredNode, hoveredLink])
 
   // Handle node hover
   const handleNodeHover = useCallback((node) => {
@@ -122,6 +318,11 @@ function SpotifyGraph({ data, onNodeClick, showGenreLabels, settings }) {
     if (containerRef.current) {
       containerRef.current.style.cursor = node ? 'pointer' : 'grab'
     }
+  }, [])
+
+  // Handle link hover
+  const handleLinkHover = useCallback((link) => {
+    setHoveredLink(link)
   }, [])
 
   // Handle node click
@@ -141,7 +342,15 @@ function SpotifyGraph({ data, onNodeClick, showGenreLabels, settings }) {
   }, [data.nodes.length])
 
   return (
-    <div className="graph-container" ref={containerRef}>
+    <div className="graph-container cosmic-theme" ref={containerRef}>
+      {/* Starfield background canvas */}
+      <canvas
+        ref={starfieldRef}
+        className="starfield-canvas"
+        width={dimensions.width}
+        height={dimensions.height}
+      />
+      
       <ForceGraph2D
         ref={graphRef}
         width={dimensions.width}
@@ -150,6 +359,7 @@ function SpotifyGraph({ data, onNodeClick, showGenreLabels, settings }) {
         nodeCanvasObject={nodeCanvasObject}
         linkCanvasObject={linkCanvasObject}
         onNodeHover={handleNodeHover}
+        onLinkHover={handleLinkHover}
         onNodeClick={handleNodeClick}
         nodeLabel={() => null}
         linkDirectionalParticles={0}
@@ -158,7 +368,6 @@ function SpotifyGraph({ data, onNodeClick, showGenreLabels, settings }) {
         warmupTicks={100}
         cooldownTicks={200}
         backgroundColor="transparent"
-        linkColor={() => 'rgba(29, 185, 84, 0.2)'}
         nodeRelSize={1}
         enableNodeDrag={true}
         enableZoomInteraction={true}
@@ -182,13 +391,18 @@ function SpotifyGraph({ data, onNodeClick, showGenreLabels, settings }) {
         </div>
       )}
 
-      {/* Hover tooltip */}
+      {/* Hover tooltip at bottom */}
       {hoveredNode && (
-        <div className="node-tooltip">
+        <div className="node-tooltip cosmic-tooltip">
           <span className="node-tooltip__name">{hoveredNode.name}</span>
           {hoveredNode.genres?.length > 0 && (
             <span className="node-tooltip__genres">
               {hoveredNode.genres.slice(0, 3).join(' • ')}
+            </span>
+          )}
+          {hoveredNode.playcount && (
+            <span className="node-tooltip__playcount">
+              {formatPlaycount(hoveredNode.playcount)} plays
             </span>
           )}
         </div>
@@ -197,10 +411,44 @@ function SpotifyGraph({ data, onNodeClick, showGenreLabels, settings }) {
   )
 }
 
+// Helper: Lighten a hex color
+function lightenColor(hex, percent) {
+  const num = parseInt(hex.replace('#', ''), 16)
+  const amt = Math.round(2.55 * percent)
+  const R = Math.min(255, (num >> 16) + amt)
+  const G = Math.min(255, ((num >> 8) & 0x00FF) + amt)
+  const B = Math.min(255, (num & 0x0000FF) + amt)
+  return `#${(0x1000000 + R * 0x10000 + G * 0x100 + B).toString(16).slice(1)}`
+}
+
+// Helper: Darken a hex color
+function darkenColor(hex, percent) {
+  const num = parseInt(hex.replace('#', ''), 16)
+  const amt = Math.round(2.55 * percent)
+  const R = Math.max(0, (num >> 16) - amt)
+  const G = Math.max(0, ((num >> 8) & 0x00FF) - amt)
+  const B = Math.max(0, (num & 0x0000FF) - amt)
+  return `#${(0x1000000 + R * 0x10000 + G * 0x100 + B).toString(16).slice(1)}`
+}
+
+// Helper: Format playcount with K/M suffix
+function formatPlaycount(count) {
+  if (count >= 1000000) {
+    return (count / 1000000).toFixed(1) + 'M'
+  }
+  if (count >= 1000) {
+    return (count / 1000).toFixed(1) + 'K'
+  }
+  return count.toString()
+}
+
 function getClusterColor(index) {
   const colors = [
-    '#ff6b6b', '#4ecdc4', '#ffe66d', '#95e1d3',
-    '#f38181', '#aa96da', '#fcbad3', '#a8d8ea'
+    // Cosmic palette - nebula and star colors
+    '#a855f7', '#8b5cf6', '#6366f1', '#3b82f6', '#0ea5e9', '#06b6d4',
+    '#14b8a6', '#10b981', '#22c55e', '#84cc16', '#eab308', '#f59e0b',
+    '#f97316', '#ef4444', '#ec4899', '#d946ef', '#c084fc', '#818cf8',
+    '#60a5fa', '#38bdf8', '#2dd4bf', '#4ade80', '#a3e635', '#fbbf24'
   ]
   return colors[index % colors.length]
 }
