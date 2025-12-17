@@ -140,19 +140,43 @@ function SpotifyGraph({ data, onNodeClick, showGenreLabels, settings }) {
     return () => window.removeEventListener('resize', updateDimensions)
   }, [generateStars])
 
-  // Preload images for nodes
+  // Preload images for nodes with proper cleanup and cache eviction
   useEffect(() => {
+    const loadingImages = []
+    const currentNodeIds = new Set(data.nodes.map(n => n.id))
+    
+    // Evict cached images for nodes no longer in the graph
+    Object.keys(imageCache.current).forEach(id => {
+      if (!currentNodeIds.has(id)) {
+        delete imageCache.current[id]
+      }
+    })
+    
     data.nodes.forEach(node => {
       if (node.image && !imageCache.current[node.id]) {
         const img = new Image()
         img.crossOrigin = 'anonymous'
         img.src = node.image
+        loadingImages.push(img)
         img.onload = () => {
           imageCache.current[node.id] = img
         }
       }
     })
+
+    return () => {
+      // Cancel pending image loads to prevent memory leaks
+      loadingImages.forEach(img => {
+        img.onload = null
+        img.src = ''
+      })
+    }
   }, [data.nodes])
+
+  // Clear linkGlowStates when links change to prevent memory buildup
+  useEffect(() => {
+    linkGlowStates.current = {}
+  }, [data.links])
 
   // Update cluster centers and spatial labels after graph simulation
   useEffect(() => {
@@ -450,9 +474,10 @@ function SpotifyGraph({ data, onNodeClick, showGenreLabels, settings }) {
   // Zoom to fit on load
   useEffect(() => {
     if (graphRef.current && data.nodes.length > 0) {
-      setTimeout(() => {
-        graphRef.current.zoomToFit(400, 50)
+      const timer = setTimeout(() => {
+        graphRef.current?.zoomToFit(400, 50)
       }, 500)
+      return () => clearTimeout(timer)
     }
   }, [data.nodes.length])
 

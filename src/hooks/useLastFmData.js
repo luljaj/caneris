@@ -16,6 +16,8 @@ export function useLastFmData(username) {
       return
     }
 
+    let cancelled = false
+
     const loadData = async () => {
       setIsLoading(true)
       setError(null)
@@ -23,9 +25,12 @@ export function useLastFmData(username) {
 
       try {
         // Fetch top artists with tags
-        setProgress('Loading artist tags (this may take a moment)...')
+        if (!cancelled) setProgress('Loading artist tags (this may take a moment)...')
         const lastfmArtists = await fetchTopArtistsWithTags(username, 100, 'overall')
         
+        // Prevent state updates if component unmounted
+        if (cancelled) return
+
         // Normalize to common format
         const normalizedArtists = normalizeLastFmArtists(lastfmArtists)
         setArtists(normalizedArtists)
@@ -35,15 +40,22 @@ export function useLastFmData(username) {
         const data = artistsToGraphData(normalizedArtists)
         setGraphData(data)
       } catch (err) {
+        if (cancelled) return
         console.error('Failed to load Last.fm data:', err)
         setError(err.message || 'Failed to load your music data from Last.fm')
       } finally {
-        setIsLoading(false)
-        setProgress('')
+        if (!cancelled) {
+          setIsLoading(false)
+          setProgress('')
+        }
       }
     }
 
     loadData()
+
+    return () => {
+      cancelled = true
+    }
   }, [username])
 
   return {

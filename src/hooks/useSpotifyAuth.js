@@ -9,6 +9,8 @@ export function useSpotifyAuth() {
 
   // Handle OAuth callback and token validation on mount
   useEffect(() => {
+    let cancelled = false
+
     const handleAuth = async () => {
       // Check for authorization code in URL (OAuth callback)
       const urlParams = new URLSearchParams(window.location.search)
@@ -19,7 +21,7 @@ export function useSpotifyAuth() {
         console.error('OAuth error:', error)
         // Clear URL params
         window.history.replaceState({}, document.title, window.location.pathname)
-        setIsLoading(false)
+        if (!cancelled) setIsLoading(false)
         return
       }
       
@@ -27,6 +29,8 @@ export function useSpotifyAuth() {
         try {
           // Exchange code for token
           const { accessToken } = await exchangeCodeForToken(code)
+          if (cancelled) return
+          
           localStorage.setItem(TOKEN_KEY, accessToken)
           setToken(accessToken)
           
@@ -35,7 +39,7 @@ export function useSpotifyAuth() {
         } catch (err) {
           console.error('Token exchange failed:', err)
         }
-        setIsLoading(false)
+        if (!cancelled) setIsLoading(false)
         return
       }
       
@@ -44,6 +48,7 @@ export function useSpotifyAuth() {
       
       if (storedToken) {
         const isValid = await validateToken(storedToken)
+        if (cancelled) return
         
         if (isValid) {
           setToken(storedToken)
@@ -52,10 +57,14 @@ export function useSpotifyAuth() {
         }
       }
       
-      setIsLoading(false)
+      if (!cancelled) setIsLoading(false)
     }
 
     handleAuth()
+
+    return () => {
+      cancelled = true
+    }
   }, [])
 
   // Start Spotify OAuth flow with PKCE

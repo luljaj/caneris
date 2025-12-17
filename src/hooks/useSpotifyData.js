@@ -15,6 +15,8 @@ export function useSpotifyData(token) {
       return
     }
 
+    let cancelled = false
+
     const loadData = async () => {
       setIsLoading(true)
       setError(null)
@@ -22,20 +24,31 @@ export function useSpotifyData(token) {
       try {
         // Fetch top 200 artists (or as many as available)
         const topArtists = await fetchAllTopArtists(token, 200, 'medium_term')
+        
+        // Prevent state updates if component unmounted
+        if (cancelled) return
+
         setArtists(topArtists)
 
         // Convert to graph data
         const data = artistsToGraphData(topArtists)
         setGraphData(data)
       } catch (err) {
+        if (cancelled) return
         console.error('Failed to load Spotify data:', err)
         setError(err.message || 'Failed to load your music data')
       } finally {
-        setIsLoading(false)
+        if (!cancelled) {
+          setIsLoading(false)
+        }
       }
     }
 
     loadData()
+
+    return () => {
+      cancelled = true
+    }
   }, [token])
 
   return {
