@@ -7,6 +7,7 @@ import SpotifyGraph from './components/SpotifyGraph'
 import ToolsPanel from './components/ToolsPanel'
 import ArtistDetails from './components/ArtistDetails'
 import Starfield from './components/Starfield'
+import { Analytics } from "@vercel/analytics/next"
 import './App.css'
 
 // Default graph settings

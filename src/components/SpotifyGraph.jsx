@@ -1,7 +1,7 @@
 import { useRef, useCallback, useEffect, useState } from 'react'
 import ForceGraph2D from 'react-force-graph-2d'
 import { forceCenter, forceX, forceY } from 'd3-force'
-import { calculateClusterCenters, calculateSpatialGenreLabels } from '../utils/graphUtils'
+import { calculateClusterCenters } from '../utils/graphUtils'
 import './SpotifyGraph.css'
 
 function SpotifyGraph({ data, onNodeClick, showGenreLabels, settings, onCameraChange }) {
@@ -14,7 +14,6 @@ function SpotifyGraph({ data, onNodeClick, showGenreLabels, settings, onCameraCh
   const [hoveredNode, setHoveredNode] = useState(null)
   const [hoveredLink, setHoveredLink] = useState(null)
   const [clusterCenters, setClusterCenters] = useState([])
-  const [spatialLabels, setSpatialLabels] = useState([])
   const [graphBounds, setGraphBounds] = useState(null) // Track graph extent for dynamic zoom limits
 
   // Default settings
@@ -73,16 +72,12 @@ function SpotifyGraph({ data, onNodeClick, showGenreLabels, settings, onCameraCh
     }
   }, [data.nodes])
 
-  // Update cluster centers, spatial labels, and graph bounds after simulation
+  // Update cluster centers and graph bounds after simulation
   useEffect(() => {
     if (graphRef.current && data.genreClusters?.length > 0) {
       const timer = setTimeout(() => {
         const centers = calculateClusterCenters(data.nodes, data.genreClusters)
         setClusterCenters(centers)
-        
-        // Calculate spatial genre labels for floating overlay
-        const labels = calculateSpatialGenreLabels(data.nodes)
-        setSpatialLabels(labels)
         
         // Calculate graph bounds for dynamic zoom limits
         const xs = data.nodes.filter(n => Number.isFinite(n.x)).map(n => n.x)
@@ -304,53 +299,6 @@ function SpotifyGraph({ data, onNodeClick, showGenreLabels, settings, onCameraCh
     }
   }, [onCameraChange])
 
-  // Render floating genre labels on canvas (drawn after each frame)
-  const handleRenderFramePost = useCallback((ctx, globalScale) => {
-    // Only show labels when zoomed out
-    if (globalScale > 0.9 || spatialLabels.length === 0) return
-    
-    // Calculate opacity based on zoom (fade in as you zoom out)
-    const opacity = Math.min(1, (0.9 - globalScale) * 3)
-    
-    spatialLabels.forEach(label => {
-      // Get the anchor node's current position from data.nodes
-      const anchorNode = data.nodes.find(n => n.id === label.anchorNodeId)
-      if (!anchorNode || !Number.isFinite(anchorNode.x) || !Number.isFinite(anchorNode.y)) return
-      
-      // Position label above the anchor node
-      const x = anchorNode.x
-      const y = anchorNode.y - 30 / globalScale // Offset above the node
-      
-      // Draw label with glow effect
-      const fontSize = Math.max(12, 16 / globalScale)
-      ctx.font = `600 ${fontSize}px 'Inter', 'Instrument Sans', system-ui, sans-serif`
-      ctx.textAlign = 'center'
-      ctx.textBaseline = 'middle'
-      
-      const text = label.name.toUpperCase()
-      
-      // Draw glow layers
-      ctx.save()
-      ctx.globalAlpha = opacity * 0.3
-      ctx.fillStyle = label.color || '#6366f1'
-      ctx.shadowColor = label.color || '#6366f1'
-      ctx.shadowBlur = 20 / globalScale
-      ctx.fillText(text, x, y)
-      ctx.fillText(text, x, y) // Double for stronger glow
-      ctx.restore()
-      
-      // Draw main text
-      ctx.save()
-      ctx.globalAlpha = opacity * 0.9
-      ctx.fillStyle = '#ffffff'
-      ctx.shadowColor = 'rgba(0, 0, 0, 0.8)'
-      ctx.shadowBlur = 4 / globalScale
-      ctx.shadowOffsetY = 2 / globalScale
-      ctx.fillText(text, x, y)
-      ctx.restore()
-    })
-  }, [spatialLabels, data.nodes])
-
   // Zoom to fit on load
   useEffect(() => {
     if (graphRef.current && data.nodes.length > 0) {
@@ -455,7 +403,6 @@ function SpotifyGraph({ data, onNodeClick, showGenreLabels, settings, onCameraCh
         onLinkHover={handleLinkHover}
         onNodeClick={handleNodeClick}
         onZoom={handleZoom}
-        onRenderFramePost={handleRenderFramePost}
         nodeLabel={() => null}
         linkDirectionalParticles={0}
         d3AlphaDecay={0.02}
