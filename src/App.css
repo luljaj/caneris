@@ -3,7 +3,7 @@
   width: 100%;
   display: flex;
   flex-direction: column;
-  background: var(--color-bg-primary);
+  background: #050510;
   position: relative;
   overflow: hidden;
 }
@@ -26,7 +26,7 @@
   align-items: center;
   justify-content: space-between;
   padding: var(--spacing-md) var(--spacing-lg);
-  background: linear-gradient(to bottom, var(--color-bg-primary), transparent);
+  background: linear-gradient(to bottom, #050510, transparent);
   pointer-events: none;
 }
 
@@ -85,6 +85,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  position: relative;
+  z-index: 1;
 }
 
 /* Loader */
@@ -94,6 +96,8 @@
   align-items: center;
   gap: var(--spacing-lg);
   color: var(--color-text-secondary);
+  position: relative;
+  z-index: 1;
 }
 
 .loader__ring {
@@ -111,12 +115,15 @@
 
 /* Error Card */
 .error-card {
-  background: var(--color-bg-secondary);
+  background: rgba(18, 18, 26, 0.9);
   border: 1px solid var(--color-bg-elevated);
   border-radius: var(--radius-lg);
   padding: var(--spacing-xl);
   text-align: center;
   max-width: 400px;
+  position: relative;
+  z-index: 1;
+  backdrop-filter: blur(10px);
 }
 
 .error-card h2 {

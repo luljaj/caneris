@@ -1,6 +1,7 @@
 // Spotify API configuration
 const CLIENT_ID = import.meta.env.VITE_SPOTIFY_CLIENT_ID
-const REDIRECT_URI = import.meta.env.VITE_SPOTIFY_REDIRECT_URI || 'http://localhost:3000'
+// Must match EXACTLY what's registered in Spotify Dashboard (including trailing slash if present)
+const REDIRECT_URI = import.meta.env.VITE_SPOTIFY_REDIRECT_URI || 'http://127.0.0.1:3000/'
 const SCOPES = [
   'user-top-read',
   'user-read-private',

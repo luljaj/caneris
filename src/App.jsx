@@ -6,6 +6,7 @@ import Login from './components/Login'
 import SpotifyGraph from './components/SpotifyGraph'
 import ToolsPanel from './components/ToolsPanel'
 import ArtistDetails from './components/ArtistDetails'
+import Starfield from './components/Starfield'
 import './App.css'
 
 // Default graph settings
@@ -78,6 +79,7 @@ function App() {
   if (authLoading) {
     return (
       <div className="app app--loading">
+        <Starfield />
         <div className="loader">
           <div className="loader__ring"></div>
           <span>Connecting...</span>
@@ -105,6 +107,7 @@ function App() {
   if (error) {
     return (
       <div className="app app--error">
+        <Starfield />
         <div className="error-card">
           <h2>Something went wrong</h2>
           <p>{error}</p>
@@ -121,6 +124,7 @@ function App() {
 
   return (
     <div className="app">
+      <Starfield />
       <header className="header">
         <div className="header__brand">
           <svg className="header__logo" viewBox="0 0 100 100" width="32" height="32">
