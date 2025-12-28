@@ -19,34 +19,41 @@
 }
 
 .login {
-  height: 100%;
+  position: fixed;
+  top: 0;
+  left: 0;
   width: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  position: relative;
+  height: 100%;
   overflow: hidden;
   background: transparent;
+  cursor: pointer;
 }
 
-/* Content */
+/* Content container */
 .login__content {
   position: relative;
+  width: 100%;
+  height: 100%;
   z-index: 1;
+}
+
+/* Title wrapper with orbit - absolutely centered in viewport */
+.login__title-wrapper {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
   display: flex;
   flex-direction: column;
   align-items: center;
   text-align: center;
-  padding: var(--spacing-2xl);
-  gap: var(--spacing-xl);
+  gap: var(--spacing-sm);
+  transition: top 1.5s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* Title wrapper */
-.login__title-wrapper {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--spacing-sm);
+/* When form is revealed, move title up */
+.login__title-wrapper--shifted {
+  top: 38%;
 }
 
 /* Info link - appears above title */
@@ -59,7 +66,7 @@
   opacity: 0;
   transform: translateY(10px);
   pointer-events: none;
-  transition: 
+  transition:
     opacity 0.3s ease,
     transform 0.3s ease,
     color 0.2s ease;
@@ -75,15 +82,17 @@
   color: var(--color-text-secondary);
 }
 
-/* Title - elegant serif */
+/* Title - elegant serif with z-index for orbit layering */
 .login__title {
+  position: relative;
+  z-index: 5;
   font-family: 'Cormorant Garamond', Georgia, serif;
   font-size: clamp(3rem, 10vw, 5rem);
   font-weight: 300;
   letter-spacing: 0.3em;
   color: #f0f0f5;
-  text-shadow: 0 0 60px rgba(29, 185, 84, 0.2);
-  margin-right: -0.3em; /* Compensate for letter-spacing on last letter */
+  text-shadow: 0 0 60px rgba(200, 220, 255, 0.15);
+  margin-right: -0.3em;
   cursor: pointer;
   transition: text-shadow 0.3s ease;
   opacity: 0;
@@ -92,37 +101,103 @@
 }
 
 .login__title:hover {
-  text-shadow: 0 0 80px rgba(29, 185, 84, 0.35);
+  text-shadow: 0 0 80px rgba(200, 220, 255, 0.25);
 }
 
-/* Action area - animated transitions */
-.login__action {
+/* Orbiting particle */
+.login__orbit-particle {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  background: radial-gradient(circle, rgba(220, 230, 255, 1) 0%, rgba(180, 200, 255, 0.8) 40%, transparent 70%);
+  border-radius: 50%;
+  box-shadow:
+    0 0 12px rgba(200, 220, 255, 0.9),
+    0 0 24px rgba(200, 220, 255, 0.5),
+    0 0 36px rgba(200, 220, 255, 0.25);
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+  z-index: 10;
+  transition: opacity 0.15s ease;
+}
+
+/* Etymology text - positioned below center */
+.login__etymology {
+  position: absolute;
+  top: calc(50% + 60px);
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm);
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+  transition: top 1.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* When form is revealed, etymology moves up with title */
+.login__etymology--shifted {
+  top: calc(38% + 60px);
+}
+
+.login__etymology-word {
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-style: italic;
+  font-size: 0.95rem;
+  color: var(--color-text-secondary);
+  line-height: 1;
+  opacity: 0;
+  animation: fadeIn 0.6s forwards;
+  animation-delay: 1.5s;
+}
+
+.login__etymology-divider {
+  opacity: 0;
+  animation: fadeIn 0.6s forwards;
+  animation-delay: 1.5s;
+}
+
+.login__etymology-meaning {
+  font-family: 'Instrument Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: 0.75rem;
+  letter-spacing: 0.02em;
+  line-height: 1;
+  opacity: 0;
+  animation: fadeIn 0.6s forwards;
+  animation-delay: 1.5s;
+}
+
+/* Login form - positioned below etymology, hidden initially */
+.login__form {
+  position: absolute;
+  top: calc(38% + 130px);
+  left: 50%;
+  transform: translateX(-50%) translateY(20px);
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  min-height: 120px;
-  width: 100%;
   gap: var(--spacing-lg);
+  width: 320px;
+  opacity: 0;
+  pointer-events: none;
+  transition: all 1.5s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: default;
 }
 
-/* Input wrapper - handles fade animation */
+.login__form--visible {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+  pointer-events: auto;
+}
+
+/* Input wrapper */
 .login__input-wrapper {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: var(--spacing-sm);
   width: 100%;
-  max-width: 280px;
-  opacity: 0;
-  transform: translateY(10px);
-  animation: fadeIn 0.6s ease forwards;
-  animation-delay: 0.8s;
-}
-
-.login__input-wrapper--visible {
-  opacity: 1;
-  transform: translateY(0);
 }
 
 .login__input {
@@ -134,10 +209,9 @@
   background: rgba(255, 255, 255, 0.03);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: var(--radius-md);
+  backdrop-filter: blur(10px);
   transition: all var(--transition-fast);
   text-align: center;
-
-  
 }
 
 .login__input::placeholder {
@@ -146,8 +220,9 @@
 
 .login__input:focus {
   outline: none;
-  border-color: rgba(213, 16, 7, 0.5);
+  border-color: rgba(99, 102, 241, 0.4);
   background: rgba(255, 255, 255, 0.05);
+  box-shadow: 0 0 20px rgba(99, 102, 241, 0.1);
 }
 
 .login__error {
@@ -162,41 +237,22 @@
   align-items: center;
   justify-content: center;
   gap: var(--spacing-sm);
+  width: 100%;
   padding: var(--spacing-md) var(--spacing-xl);
   font-family: 'Instrument Sans', -apple-system, BlinkMacSystemFont, sans-serif;
   font-size: 0.9rem;
   font-weight: 500;
-  color: #000;
-  background: var(--color-accent);
+  color: #f0f0f5;
   border-radius: var(--radius-full);
-  opacity: 0;
-  animation: fadeIn 0.6s forwards;
-  animation-delay: 1.55s;
-  transition: 
+  transition:
     background 0.3s ease,
     color 0.3s ease,
     box-shadow 0.3s ease,
     transform 0.15s ease;
-  box-shadow: 
-    0 0 30px rgba(29, 185, 84, 0.3),
-    0 4px 20px rgba(0, 0, 0, 0.3);
-}
-
-.login__button:hover {
-  background: var(--color-accent-hover);
-  transform: translateY(-2px);
-  box-shadow: 
-    0 0 50px rgba(29, 185, 84, 0.4),
-    0 8px 30px rgba(0, 0, 0, 0.4);
-}
-
-.login__button:active {
-  transform: translateY(0);
 }
 
 .login__button--lastfm {
   background: rgba(70, 75, 150, 0.1);
-  color: #f0f0f5;
   border: 1px solid rgba(70, 75, 150, 0.25);
   backdrop-filter: blur(10px);
   box-shadow:
@@ -207,9 +263,14 @@
 .login__button--lastfm:hover {
   background: rgba(70, 75, 150, 0.18);
   border-color: rgba(29, 185, 84, 0.35);
+  transform: translateY(-2px);
   box-shadow:
     0 0 20px rgba(29, 185, 84, 0.15),
     0 6px 25px rgba(0, 0, 0, 0.35);
+}
+
+.login__button:active {
+  transform: translateY(0);
 }
 
 .login__button:disabled {
@@ -218,132 +279,88 @@
   transform: none;
 }
 
-/* Etymology*/
-.login__etymology {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-sm);
-  margin-top: var(--spacing-lg);
-  padding: var(--spacing-md) var(--spacing-lg);
-  font-size: 0.8rem;
-  color: var(--color-text-muted);
-  opacity: 0.7;
-}
-
-.login__etymology-word {
-  font-family: 'Cormorant Garamond', Georgia, serif;
-  font-style: italic;
-  font-size: 0.95rem;
-  color: var(--color-text-secondary);
-  line-height: 1;
-  opacity: 0;
-  animation: fadeIn 0.6s forwards;
-  animation-delay: 3s;
-}
-
-.login__etymology-divider {
-  opacity: 0.4;
-  animation: fadeIn 0.6s forwards;
-  animation-delay: 3s;
-}
-
-.login__etymology-meaning {
+/* Click hint at bottom of screen */
+.login__hint {
+  position: absolute;
+  bottom: 2rem;
+  left: 50%;
+  transform: translateX(-50%);
   font-family: 'Instrument Sans', -apple-system, BlinkMacSystemFont, sans-serif;
-  font-size: 0.75rem;
-  letter-spacing: 0.02em;
-  line-height: 1;
+  font-size: 0.85rem;
+  color: rgba(160, 160, 176, 0.4);
+  letter-spacing: 0.05em;
+  pointer-events: none;
   opacity: 0;
-  animation: fadeIn 0.6s forwards;
-  animation-delay: 3s;
+  animation: fadeIn 0.6s ease forwards;
+  animation-delay: 2s;
+  transition: opacity 0.3s ease;
+}
+
+.login__hint--hidden {
+  opacity: 0 !important;
 }
 
 /* ========== MOBILE RESPONSIVE STYLES ========== */
 @media (max-width: 768px) {
-  .login {
-    /* Account for safe areas */
-    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  .login__title-wrapper--shifted {
+    top: 30%;
   }
-  
-  .login__content {
-    padding: var(--spacing-xl);
-    gap: var(--spacing-lg);
-    /* Center content with bottom weighting for thumb reach */
-    justify-content: center;
-    padding-bottom: 15vh;
+
+  .login__etymology--shifted {
+    top: calc(30% + 50px);
   }
-  
-  /* Tabs - larger touch targets */
-  .login__tabs {
-    gap: var(--spacing-lg);
-  }
-  
-  .login__tab {
-    min-height: 44px;
-    min-width: 80px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 0.8rem;
-    padding: var(--spacing-sm) var(--spacing-md);
-  }
-  
-  /* Input - larger for comfortable typing */
-  .login__input-wrapper {
+
+  .login__form {
+    top: calc(30% + 110px);
+    width: 90%;
     max-width: 320px;
+    padding: 0 var(--spacing-md);
   }
-  
+
   .login__input {
     min-height: 52px;
     font-size: 1rem;
     padding: var(--spacing-md) var(--spacing-lg);
   }
-  
-  /* Button - larger touch target */
+
   .login__button {
     min-height: 52px;
-    min-width: 200px;
     padding: var(--spacing-md) var(--spacing-2xl);
     font-size: 1rem;
   }
-  
+
   /* Prevent hover effects on touch devices */
   .login__button:hover {
     transform: none;
   }
-  
+
   .login__button:active {
     transform: scale(0.98);
     opacity: 0.9;
   }
+
+  .login__hint {
+    bottom: max(2rem, env(safe-area-inset-bottom));
+  }
 }
 
 @media (max-width: 480px) {
-  .login__content {
-    padding: var(--spacing-lg);
-    padding-bottom: 12vh;
-  }
-  
   .login__title {
     letter-spacing: 0.2em;
     margin-right: -0.2em;
   }
-  
+
   .login__etymology {
     flex-direction: column;
-    gap: var(--spacing-sm);
-    padding: var(--spacing-lg);
+    gap: var(--spacing-xs);
   }
-  
+
   .login__etymology-divider {
     display: none;
   }
-  
-  .login__button {
+
+  .login__form {
     width: 100%;
-    max-width: 280px;
-  }
-  
-  .login__input-wrapper {
-    max-width: 100%;
+    padding: 0 var(--spacing-lg);
   }
 }
