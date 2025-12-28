@@ -347,6 +347,7 @@ export function calculateSpatialGenreLabels(nodes, gridSize = 150) {
   if (xs.length === 0 || ys.length === 0) return []
   
   const minX = Math.min(...xs)
+  const minY = Math.min(...ys)
   
   // Create grid cells
   const cells = {}
@@ -355,7 +356,7 @@ export function calculateSpatialGenreLabels(nodes, gridSize = 150) {
     if (!Number.isFinite(node.x) || !Number.isFinite(node.y)) return
     
     const cellX = Math.floor((node.x - minX) / gridSize)
-    const cellY = Math.floor((node.y - minX) / gridSize)
+    const cellY = Math.floor((node.y - minY) / gridSize)
     const cellKey = `${cellX},${cellY}`
     
     if (!cells[cellKey]) {

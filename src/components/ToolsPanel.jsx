@@ -5,6 +5,12 @@ function ToolsPanel({ settings, onSettingsChange, showGenreLabels, onToggleGenre
     onSettingsChange({ ...settings, [key]: value })
   }
 
+  const labelOpacity = settings?.labelOpacity ?? 0.6
+  const linkOpacity = settings?.linkOpacity ?? 1
+  const nodeScale = settings?.nodeScale ?? 1
+  const chargeStrength = settings?.chargeStrength ?? -120
+  const linkDistance = settings?.linkDistance ?? 60
+
   // Handle backdrop click
   const handleBackdropClick = (e) => {
     if (e.target === e.currentTarget) {
@@ -35,21 +41,21 @@ function ToolsPanel({ settings, onSettingsChange, showGenreLabels, onToggleGenre
           </button>
         </div>
       
-      <div className="tools-panel__content">
+        <div className="tools-panel__content">
 
         {/* Label Opacity */}
         <div className="tools-panel__group">
           <label className="slider">
             <div className="slider__header">
-              <span className="slider__label">Label Opacity</span>
-              <span className="slider__value">{Math.round(settings.labelOpacity * 100)}%</span>
+              <span className="slider__label">Artist Label Opacity</span>
+              <span className="slider__value">{Math.round(labelOpacity * 100)}%</span>
             </div>
             <input
               type="range"
               min="0"
               max="1"
               step="0.05"
-              value={settings.labelOpacity}
+              value={labelOpacity}
               onChange={(e) => handleChange('labelOpacity', parseFloat(e.target.value))}
             />
           </label>
@@ -60,14 +66,14 @@ function ToolsPanel({ settings, onSettingsChange, showGenreLabels, onToggleGenre
           <label className="slider">
             <div className="slider__header">
               <span className="slider__label">Star Size</span>
-              <span className="slider__value">{settings.nodeScale.toFixed(1)}x</span>
+              <span className="slider__value">{nodeScale.toFixed(1)}x</span>
             </div>
             <input
               type="range"
               min="0.3"
               max="2"
               step="0.1"
-              value={settings.nodeScale}
+              value={nodeScale}
               onChange={(e) => handleChange('nodeScale', parseFloat(e.target.value))}
             />
           </label>
@@ -78,14 +84,14 @@ function ToolsPanel({ settings, onSettingsChange, showGenreLabels, onToggleGenre
           <label className="slider">
             <div className="slider__header">
               <span className="slider__label">Gravity Repulsion</span>
-              <span className="slider__value">{Math.abs(settings.chargeStrength)}</span>
+              <span className="slider__value">{Math.abs(chargeStrength)}</span>
             </div>
             <input
               type="range"
               min="10"
               max="500"
               step="10"
-              value={Math.abs(settings.chargeStrength)}
+              value={Math.abs(chargeStrength)}
               onChange={(e) => handleChange('chargeStrength', -parseFloat(e.target.value))}
             />
           </label>
@@ -96,20 +102,53 @@ function ToolsPanel({ settings, onSettingsChange, showGenreLabels, onToggleGenre
           <label className="slider">
             <div className="slider__header">
               <span className="slider__label">Connection Distance</span>
-              <span className="slider__value">{settings.linkDistance}px</span>
+              <span className="slider__value">{linkDistance}px</span>
             </div>
             <input
               type="range"
               min="10"
               max="250"
               step="5"
-              value={settings.linkDistance}
+              value={linkDistance}
               onChange={(e) => handleChange('linkDistance', parseFloat(e.target.value))}
             />
           </label>
         </div>
 
+        {/* Link Opacity */}
+        <div className="tools-panel__group">
+          <label className="slider">
+            <div className="slider__header">
+              <span className="slider__label">Link Opacity</span>
+              <span className="slider__value">{Math.round(linkOpacity * 100)}%</span>
+            </div>
+            <input
+              type="range"
+              min="0.1"
+              max="1"
+              step="0.05"
+              value={linkOpacity}
+              onChange={(e) => handleChange('linkOpacity', parseFloat(e.target.value))}
+            />
+          </label>
+        </div>
+
         <div className="tools-panel__divider"></div>
+
+        {/* Genre Labels Toggle */}
+        <div className="tools-panel__group">
+          <label className="toggle">
+            <span className="toggle__label">Genre Labels</span>
+            <span className="toggle__switch">
+              <input
+                type="checkbox"
+                checked={showGenreLabels}
+                onChange={onToggleGenreLabels}
+              />
+              <span className="toggle__slider"></span>
+            </span>
+          </label>
+        </div>
 
         {/* Artist Labels Toggle */}
         <div className="tools-panel__group">
@@ -126,8 +165,8 @@ function ToolsPanel({ settings, onSettingsChange, showGenreLabels, onToggleGenre
           </label>
         </div>
 
+        </div>
       </div>
-    </div>
     </div>
   )
 }

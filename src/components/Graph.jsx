@@ -26,16 +26,24 @@ function Graph({
   const [dimensions, setDimensions] = useState({ width: 800, height: 600 })
   const [hoveredNode, setHoveredNode] = useState(null)
   const [clickedNode, setClickedNode] = useState(null) // Desktop: clicked node to show connections
-  const [selectedNode, setSelectedNode] = useState(null) // Mobile: tap-to-select node
   const [clusterCenters, setClusterCenters] = useState([])
   const [graphBounds, setGraphBounds] = useState(null) // Track graph extent for dynamic zoom limits
 
   // Default settings
   const {
+    labelOpacity = 0.6,
     nodeScale = 1,
+    linkOpacity = 1,
     chargeStrength = -150,
-    linkDistance = 100,
+    linkDistance = 60,
   } = settings || {}
+
+  const normalizedLabelOpacity = Number.isFinite(labelOpacity)
+    ? Math.min(1, Math.max(0, labelOpacity))
+    : 1
+  const normalizedLinkOpacity = Number.isFinite(linkOpacity)
+    ? Math.min(1, Math.max(0, linkOpacity))
+    : 1
 
   // Handle window resize
   useEffect(() => {
@@ -254,11 +262,13 @@ function Graph({
       ctx.textBaseline = 'bottom'
 
       const labelY = node.y - size - 4
+      const shadowOpacity = 0.6 * normalizedLabelOpacity
+      const textOpacity = 0.85 * normalizedLabelOpacity
 
       // Draw text with subtle shadow for readability
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.6)'
+      ctx.fillStyle = `rgba(0, 0, 0, ${shadowOpacity})`
       ctx.fillText(label, node.x + 0.5, labelY + 0.5)
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.85)'
+      ctx.fillStyle = `rgba(255, 255, 255, ${textOpacity})`
       ctx.fillText(label, node.x, labelY)
     }
 
@@ -294,14 +304,19 @@ function Graph({
       ctx.fillStyle = '#ffffff'
       ctx.fillText(label, node.x, labelY + 2)
     }
-  }, [hoveredNode, clickedNode, nodeScale, showArtistLabels])
+  }, [hoveredNode, clickedNode, nodeScale, showArtistLabels, normalizedLabelOpacity])
 
   // Custom link rendering - simple constellation lines, brighter for clicked node connections
   const linkCanvasObject = useCallback((link, ctx) => {
     const start = link.source
     const end = link.target
 
-    if (!start.x || !end.x) return
+    if (
+      !Number.isFinite(start.x) ||
+      !Number.isFinite(start.y) ||
+      !Number.isFinite(end.x) ||
+      !Number.isFinite(end.y)
+    ) return
 
     // Check if this link is connected to clicked node
     const isConnectedToClicked = clickedNode?.id === start.id || clickedNode?.id === end.id
@@ -315,9 +330,10 @@ function Graph({
     const strength = Math.min(1, Math.max(0.1, (link.value || 1) / 10))
 
     // Calculate opacity and width based on whether connected to clicked node
-    const opacity = isConnectedToClicked
+    const baseOpacity = isConnectedToClicked
       ? 0.08 + strength * 0.20  // Brighter when showing connections
       : 0.03 + strength * 0.12  // Default subtle
+    const opacity = Math.min(1, baseOpacity * normalizedLinkOpacity)
 
     const lineWidth = isConnectedToClicked
       ? 0.5 + strength * 1.0    // Slightly thicker when active
@@ -330,7 +346,7 @@ function Graph({
     ctx.strokeStyle = `rgba(100, 120, 160, ${opacity})`
     ctx.lineWidth = lineWidth
     ctx.stroke()
-  }, [clickedNode])
+  }, [clickedNode, normalizedLinkOpacity])
 
   // Handle node hover
   const handleNodeHover = useCallback((node) => {
@@ -403,13 +419,10 @@ function Graph({
     }
   }, [onCameraChange])
 
-  // Handle background click to clear connections and deselect on mobile
+  // Handle background click to clear connections
   const handleBackgroundClick = useCallback(() => {
     setClickedNode(null)
-    if (isMobile && selectedNode) {
-      setSelectedNode(null)
-    }
-  }, [isMobile, selectedNode])
+  }, [])
 
   // Zoom to fit on load
   useEffect(() => {
@@ -561,7 +574,7 @@ function Graph({
           <span className="node-tooltip__name">{hoveredNode.name}</span>
           {hoveredNode.genres?.length > 0 && (
             <span className="node-tooltip__genres">
-              {hoveredNode.genres.slice(0, 3).join(' • ')}
+              {hoveredNode.genres.slice(0, 3).join(' / ')}
             </span>
           )}
           {hoveredNode.playcount && (

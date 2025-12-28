@@ -15,10 +15,9 @@ import './App.css'
 const DEFAULT_SETTINGS = {
   labelOpacity: 0.6,
   nodeScale: 1,
-  linkOpacity: 0.5,
+  linkOpacity: 1,
   chargeStrength: -120,
-  linkDistance: 60,
-  showAllLabels: true
+  linkDistance: 60
 }
 
 // Mobile breakpoint

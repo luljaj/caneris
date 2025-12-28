@@ -175,7 +175,7 @@ function Login({ onLastFmLogin }) {
         {/* Etymology */}
         <div className={`login__etymology ${formRevealed ? 'login__etymology--shifted' : ''}`}>
           <span className="login__etymology-word">caneris</span>
-          <span className="login__etymology-divider">—</span>
+          <span className="login__etymology-divider">-</span>
           <span className="login__etymology-meaning">from Latin "canere": to sing</span>
         </div>
 

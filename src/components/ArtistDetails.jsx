@@ -187,7 +187,7 @@ function ArtistDetails({ artist, graphData, onClose }) {
                       <div className="connection-item__name">{conn.artist.name}</div>
                       {conn.artist.genres?.length > 0 && (
                         <div className="connection-item__genres">
-                          {conn.artist.genres.slice(0, 2).join(' • ')}
+                          {conn.artist.genres.slice(0, 2).join(' / ')}
                         </div>
                       )}
                     </div>

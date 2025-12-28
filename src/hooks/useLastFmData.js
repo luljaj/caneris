@@ -27,7 +27,7 @@ export function useLastFmData(username) {
         // Fetch complete data with artists, similarity, and images
         const { artists: fetchedArtists, similarityMap } = await fetchLastFmDataComplete(
           username,
-          100,
+          500,
           'overall',
           ({ stage, percent, message }) => {
             if (!cancelled) {
