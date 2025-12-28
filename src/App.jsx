@@ -34,6 +34,7 @@ function App() {
   
   const [selectedArtist, setSelectedArtist] = useState(null)
   const [showGenreLabels, setShowGenreLabels] = useState(false)
+  const [showArtistLabels, setShowArtistLabels] = useState(false)
   const [graphSettings, setGraphSettings] = useState(DEFAULT_SETTINGS)
   const [showSettings, setShowSettings] = useState(false)
   const [cameraOffset, setCameraOffset] = useState({ x: 0, y: 0 })
@@ -163,6 +164,7 @@ function App() {
               data={graphData}
               onNodeClick={setSelectedArtist}
               showGenreLabels={showGenreLabels}
+              showArtistLabels={showArtistLabels}
               settings={graphSettings}
               onCameraChange={setCameraOffset}
               isMobile={isMobile}
@@ -190,6 +192,8 @@ function App() {
                 onSettingsChange={setGraphSettings}
                 showGenreLabels={showGenreLabels}
                 onToggleGenreLabels={() => setShowGenreLabels(!showGenreLabels)}
+                showArtistLabels={showArtistLabels}
+                onToggleArtistLabels={() => setShowArtistLabels(!showArtistLabels)}
                 onClose={() => setShowSettings(false)}
               />
             )}

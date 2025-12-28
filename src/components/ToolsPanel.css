@@ -96,8 +96,8 @@
 }
 
 .tools-panel__content .slider__value {
-  background: rgba(168, 85, 247, 0.2);
-  color: #c084fc;
+  background: var(--color-accent-dim);
+  color: var(--color-accent);
 }
 
 .tools-panel__group {
@@ -159,7 +159,7 @@
 }
 
 .toggle__switch input:checked + .toggle__slider {
-  background: #a855f7;
+  background: #10b981;
 }
 
 .toggle__switch input:checked + .toggle__slider::before {
@@ -210,22 +210,22 @@
   appearance: none;
   width: 16px;
   height: 16px;
-  background: #a855f7;
+  background: #10b981;
   border-radius: 50%;
   cursor: pointer;
   transition: all var(--transition-fast);
-  box-shadow: 0 2px 6px rgba(168, 85, 247, 0.4);
+  box-shadow: 0 2px 6px rgba(16, 185, 129, 0.4);
 }
 
 .slider input[type="range"]::-webkit-slider-thumb:hover {
   transform: scale(1.1);
-  box-shadow: 0 2px 12px rgba(168, 85, 247, 0.6);
+  box-shadow: 0 2px 12px rgba(16, 185, 129, 0.6);
 }
 
 .slider input[type="range"]::-moz-range-thumb {
   width: 16px;
   height: 16px;
-  background: #a855f7;
+  background: #10b981;
   border: none;
   border-radius: 50%;
   cursor: pointer;
@@ -324,4 +324,3 @@
     height: 24px;
   }
 }
-

@@ -4,13 +4,14 @@ import { forceCenter, forceX, forceY } from 'd3-force'
 import { calculateClusterCenters } from '../utils/graphUtils'
 import './Graph.css'
 
-function Graph({ 
-  data, 
-  onNodeClick, 
-  showGenreLabels, 
-  settings, 
+function Graph({
+  data,
+  onNodeClick,
+  showGenreLabels,
+  showArtistLabels,
+  settings,
   onCameraChange,
-  isMobile 
+  isMobile
 }) {
   const graphRef = useRef()
   const containerRef = useRef()
@@ -244,17 +245,34 @@ function Graph({
     ctx.lineWidth = isHovered ? Math.max(1.5, size * 0.1) : 0.5
     ctx.stroke()
     
-    // Draw name label on hover
+    // Draw persistent artist label (small, above node)
+    if (showArtistLabels && !isHovered) {
+      const label = node.name
+      const fontSize = Math.max(8, Math.min(10, size * 0.5))
+      ctx.font = `500 ${fontSize}px 'Inter', 'Instrument Sans', system-ui, sans-serif`
+      ctx.textAlign = 'center'
+      ctx.textBaseline = 'bottom'
+
+      const labelY = node.y - size - 4
+
+      // Draw text with subtle shadow for readability
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.6)'
+      ctx.fillText(label, node.x + 0.5, labelY + 0.5)
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.85)'
+      ctx.fillText(label, node.x, labelY)
+    }
+
+    // Draw name label on hover (larger, below node with background)
     if (isHovered) {
       const label = node.name
       const fontSize = Math.max(11, Math.min(16, size * 0.8))
       ctx.font = `600 ${fontSize}px 'Inter', 'Instrument Sans', system-ui, sans-serif`
       ctx.textAlign = 'center'
       ctx.textBaseline = 'top'
-      
+
       const labelY = node.y + size + 8
       const textWidth = ctx.measureText(label).width
-      
+
       // Draw label background
       ctx.fillStyle = 'rgba(5, 5, 16, 0.85)'
       ctx.beginPath()
@@ -266,17 +284,17 @@ function Graph({
         4
       )
       ctx.fill()
-      
+
       // Draw label border
       ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)'
       ctx.lineWidth = 1
       ctx.stroke()
-      
+
       // Draw label text
       ctx.fillStyle = '#ffffff'
       ctx.fillText(label, node.x, labelY + 2)
     }
-  }, [hoveredNode, clickedNode, nodeScale])
+  }, [hoveredNode, clickedNode, nodeScale, showArtistLabels])
 
   // Custom link rendering - simple constellation lines, brighter for clicked node connections
   const linkCanvasObject = useCallback((link, ctx) => {

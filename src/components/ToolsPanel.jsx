@@ -1,6 +1,6 @@
 import './ToolsPanel.css'
 
-function ToolsPanel({ settings, onSettingsChange, showGenreLabels, onToggleGenreLabels, onClose }) {
+function ToolsPanel({ settings, onSettingsChange, showGenreLabels, onToggleGenreLabels, showArtistLabels, onToggleArtistLabels, onClose }) {
   const handleChange = (key, value) => {
     onSettingsChange({ ...settings, [key]: value })
   }
@@ -110,6 +110,21 @@ function ToolsPanel({ settings, onSettingsChange, showGenreLabels, onToggleGenre
         </div>
 
         <div className="tools-panel__divider"></div>
+
+        {/* Artist Labels Toggle */}
+        <div className="tools-panel__group">
+          <label className="toggle">
+            <span className="toggle__label">Artist Labels</span>
+            <span className="toggle__switch">
+              <input
+                type="checkbox"
+                checked={showArtistLabels}
+                onChange={onToggleArtistLabels}
+              />
+              <span className="toggle__slider"></span>
+            </span>
+          </label>
+        </div>
 
       </div>
     </div>
