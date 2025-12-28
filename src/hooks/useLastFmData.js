@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { fetchTopArtistsWithTags, normalizeLastFmArtists } from '../utils/lastfm'
+import { fetchLastFmDataComplete } from '../utils/lastfm'
 import { artistsToGraphData } from '../utils/graphUtils'
 
 export function useLastFmData(username) {
@@ -24,20 +24,26 @@ export function useLastFmData(username) {
       setProgress('Fetching your top artists...')
 
       try {
-        // Fetch top artists with tags
-        if (!cancelled) setProgress('Loading artist tags (this may take a moment)...')
-        const lastfmArtists = await fetchTopArtistsWithTags(username, 100, 'overall')
-        
+        // Fetch complete data with artists, similarity, and images
+        const { artists: fetchedArtists, similarityMap } = await fetchLastFmDataComplete(
+          username,
+          100,
+          'overall',
+          ({ stage, percent, message }) => {
+            if (!cancelled) {
+              setProgress(message)
+            }
+          }
+        )
+
         // Prevent state updates if component unmounted
         if (cancelled) return
 
-        // Normalize to common format
-        const normalizedArtists = normalizeLastFmArtists(lastfmArtists)
-        setArtists(normalizedArtists)
+        setArtists(fetchedArtists)
 
-        // Convert to graph data
-        setProgress('Building graph...')
-        const data = artistsToGraphData(normalizedArtists)
+        // Convert to graph data with similarity-based connections
+        setProgress('Building constellation...')
+        const data = artistsToGraphData(fetchedArtists, similarityMap)
         setGraphData(data)
       } catch (err) {
         if (cancelled) return

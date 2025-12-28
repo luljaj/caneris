@@ -1,7 +1,9 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import './ArtistDetails.css'
 
-function ArtistDetails({ artist, onClose }) {
+function ArtistDetails({ artist, graphData, onClose }) {
+  const [activeTab, setActiveTab] = useState('info')
+
   // Close on escape key
   useEffect(() => {
     const handleEscape = (e) => {
@@ -10,6 +12,41 @@ function ArtistDetails({ artist, onClose }) {
     window.addEventListener('keydown', handleEscape)
     return () => window.removeEventListener('keydown', handleEscape)
   }, [onClose])
+
+  // Get all connected artists for the current artist
+  const getConnectedArtists = () => {
+    if (!graphData?.links || !graphData?.nodes) return []
+
+    const connections = []
+    const nodeMap = new Map(graphData.nodes.map(n => [n.id, n]))
+
+    graphData.links.forEach(link => {
+      let connectedArtist = null
+      const sourceId = link.source.id || link.source
+      const targetId = link.target.id || link.target
+
+      if (sourceId === artist.id) {
+        connectedArtist = nodeMap.get(targetId)
+      } else if (targetId === artist.id) {
+        connectedArtist = nodeMap.get(sourceId)
+      }
+
+      if (connectedArtist) {
+        connections.push({
+          artist: connectedArtist,
+          linkType: link.linkType,
+          value: link.value,
+          visible: link.visible,
+          matchPercentage: link.linkType === 'similarity' ? Math.round((link.value / 10) * 100) : null,
+          sharedGenreCount: link.linkType === 'genre' ? link.value : null
+        })
+      }
+    })
+
+    return connections.sort((a, b) => b.value - a.value)
+  }
+
+  const connectedArtists = getConnectedArtists()
 
   // Close on backdrop click
   const handleBackdropClick = (e) => {
@@ -26,6 +63,25 @@ function ArtistDetails({ artist, onClose }) {
           </svg>
         </button>
 
+        {/* Tab Navigation */}
+        <div className="artist-card__tabs">
+          <button
+            className={`artist-card__tab ${activeTab === 'info' ? 'artist-card__tab--active' : ''}`}
+            onClick={() => setActiveTab('info')}
+          >
+            Info
+          </button>
+          <button
+            className={`artist-card__tab ${activeTab === 'connections' ? 'artist-card__tab--active' : ''}`}
+            onClick={() => setActiveTab('connections')}
+          >
+            Connections <span className="artist-card__tab-badge">{connectedArtists.length}</span>
+          </button>
+        </div>
+
+        {/* Info Tab */}
+        {activeTab === 'info' && (
+          <>
         <div className="artist-card__header">
           {artist.image ? (
             <img 
@@ -86,7 +142,7 @@ function ArtistDetails({ artist, onClose }) {
         )}
 
         {artist.lastfmUrl && (
-          <a 
+          <a
             className="artist-card__link artist-card__link--lastfm"
             href={artist.lastfmUrl}
             target="_blank"
@@ -97,6 +153,57 @@ function ArtistDetails({ artist, onClose }) {
             </svg>
             Open in Last.fm
           </a>
+        )}
+          </>
+        )}
+
+        {/* Connections Tab */}
+        {activeTab === 'connections' && (
+          <div className="artist-card__connections">
+            {connectedArtists.length === 0 ? (
+              <div className="artist-card__empty">
+                <p>No connections found</p>
+              </div>
+            ) : (
+              <div className="artist-card__connection-list">
+                {connectedArtists.map(conn => (
+                  <div key={conn.artist.id} className="connection-item">
+                    {conn.artist.image ? (
+                      <img
+                        className="connection-item__image"
+                        src={conn.artist.image}
+                        alt={conn.artist.name}
+                      />
+                    ) : (
+                      <div className="connection-item__image connection-item__image--placeholder">
+                        <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                          <path d="M9 18V5l12-2v13"/>
+                          <circle cx="6" cy="18" r="3"/>
+                          <circle cx="18" cy="16" r="3"/>
+                        </svg>
+                      </div>
+                    )}
+                    <div className="connection-item__info">
+                      <div className="connection-item__name">{conn.artist.name}</div>
+                      {conn.artist.genres?.length > 0 && (
+                        <div className="connection-item__genres">
+                          {conn.artist.genres.slice(0, 2).join(' • ')}
+                        </div>
+                      )}
+                    </div>
+                    <div className="connection-item__strength">
+                      <div className="connection-item__percentage">
+                        {conn.linkType === 'similarity' ? `${conn.matchPercentage}%` : conn.sharedGenreCount}
+                      </div>
+                      <div className="connection-item__label">
+                        {conn.linkType === 'similarity' ? 'match' : 'genres'}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         )}
       </div>
     </div>

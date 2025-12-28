@@ -16,10 +16,15 @@ function SpotifyGraph({
   const containerRef = useRef()
   const imageCache = useRef({})
   const cameraOffset = useRef({ x: 0, y: 0, k: 1 }) // Track camera position
-  
+  const clickTimeout = useRef(null)
+  const lastClickedNode = useRef(null)
+  const lastTapTime = useRef(0)
+  const lastTappedNodeId = useRef(null)
+  const DOUBLE_TAP_THRESHOLD = 300
+
   const [dimensions, setDimensions] = useState({ width: 800, height: 600 })
   const [hoveredNode, setHoveredNode] = useState(null)
-  const [hoveredLink, setHoveredLink] = useState(null)
+  const [clickedNode, setClickedNode] = useState(null) // Desktop: clicked node to show connections
   const [selectedNode, setSelectedNode] = useState(null) // Mobile: tap-to-select node
   const [clusterCenters, setClusterCenters] = useState([])
   const [graphBounds, setGraphBounds] = useState(null) // Track graph extent for dynamic zoom limits
@@ -111,13 +116,21 @@ function SpotifyGraph({
   useEffect(() => {
     if (graphRef.current) {
       graphRef.current.d3Force('charge')?.strength(chargeStrength)
-      graphRef.current.d3Force('link')?.distance(linkDistance)
-      
+
+      // Dynamic link distance based on similarity strength
+      // Stronger connections (higher value) = shorter distance
+      graphRef.current.d3Force('link')?.distance((link) => {
+        const strength = Math.min(1, Math.max(0.1, (link.value || 1) / 10))
+        // Inverse relationship: high strength = short distance
+        // Range: ~20px (strong) to ~100px (weak)
+        return linkDistance * (1.5 - strength)
+      })
+
       // Add center force to keep disconnected subgraphs closer together
       graphRef.current.d3Force('center', forceCenter(0, 0))
       graphRef.current.d3Force('x', forceX(0).strength(0.05))
       graphRef.current.d3Force('y', forceY(0).strength(0.05))
-      
+
       graphRef.current.d3ReheatSimulation()
     }
   }, [chargeStrength, linkDistance])
@@ -129,8 +142,8 @@ function SpotifyGraph({
     
     const baseSize = (node.val || 5) * nodeScale
     const size = Math.max(6, baseSize)
-    // On mobile, use selectedNode for hover effect; on desktop use hoveredNode
-    const isHovered = hoveredNode?.id === node.id || selectedNode?.id === node.id
+    // Show glow for hovered or clicked node (desktop only, mobile has no hover/click feedback)
+    const isHovered = hoveredNode?.id === node.id || clickedNode?.id === node.id
     
     // Get node color with cosmic tint
     const nodeColor = node.color || '#6366f1'
@@ -232,49 +245,43 @@ function SpotifyGraph({
       ctx.fillStyle = '#ffffff'
       ctx.fillText(label, node.x, labelY + 2)
     }
-  }, [hoveredNode, selectedNode, nodeScale])
+  }, [hoveredNode, clickedNode, nodeScale])
 
-  // Custom link rendering - simple constellation lines with subtle hover highlight
+  // Custom link rendering - simple constellation lines, brighter for clicked node connections
   const linkCanvasObject = useCallback((link, ctx) => {
     const start = link.source
     const end = link.target
-    
+
     if (!start.x || !end.x) return
-    
-    // Check if this link is hovered or connected to selected node (mobile)
-    const isHovered = hoveredLink === link || 
-      hoveredNode?.id === start.id || 
-      hoveredNode?.id === end.id ||
-      selectedNode?.id === start.id ||
-      selectedNode?.id === end.id
-    
-    // Simple hover effect - just brighter and slightly thicker
-    if (isHovered) {
-      // Subtle glow layer behind
-      ctx.beginPath()
-      ctx.moveTo(start.x, start.y)
-      ctx.lineTo(end.x, end.y)
-      ctx.strokeStyle = 'rgba(150, 180, 255, 0.12)'
-      ctx.lineWidth = 3
-      ctx.stroke()
-      
-      // Main bright line
-      ctx.beginPath()
-      ctx.moveTo(start.x, start.y)
-      ctx.lineTo(end.x, end.y)
-      ctx.strokeStyle = 'rgba(200, 220, 255, 0.45)'
-      ctx.lineWidth = 1
-      ctx.stroke()
-    } else {
-      // Default subtle constellation line
-      ctx.beginPath()
-      ctx.moveTo(start.x, start.y)
-      ctx.lineTo(end.x, end.y)
-      ctx.strokeStyle = 'rgba(80, 100, 130, 0.08)'
-      ctx.lineWidth = 0.5
-      ctx.stroke()
+
+    // Check if this link is connected to clicked node
+    const isConnectedToClicked = clickedNode?.id === start.id || clickedNode?.id === end.id
+
+    // Skip rendering invisible links unless connected to clicked node
+    if (link.visible === false && !isConnectedToClicked) {
+      return // Don't render - but link still affects physics
     }
-  }, [hoveredNode, hoveredLink, selectedNode])
+
+    // Calculate strength from link value (0-10 scale, where 10 = perfect match)
+    const strength = Math.min(1, Math.max(0.1, (link.value || 1) / 10))
+
+    // Calculate opacity and width based on whether connected to clicked node
+    const opacity = isConnectedToClicked
+      ? 0.08 + strength * 0.20  // Brighter when showing connections
+      : 0.03 + strength * 0.12  // Default subtle
+
+    const lineWidth = isConnectedToClicked
+      ? 0.5 + strength * 1.0    // Slightly thicker when active
+      : 0.3 + strength * 0.7    // Default thin
+
+    // Draw the link
+    ctx.beginPath()
+    ctx.moveTo(start.x, start.y)
+    ctx.lineTo(end.x, end.y)
+    ctx.strokeStyle = `rgba(100, 120, 160, ${opacity})`
+    ctx.lineWidth = lineWidth
+    ctx.stroke()
+  }, [clickedNode])
 
   // Handle node hover
   const handleNodeHover = useCallback((node) => {
@@ -284,30 +291,53 @@ function SpotifyGraph({
     }
   }, [])
 
-  // Handle link hover
-  const handleLinkHover = useCallback((link) => {
-    setHoveredLink(link)
-  }, [])
-
   // Handle node click - different behavior for mobile vs desktop
   const handleNodeClick = useCallback((node) => {
     if (!node) return
-    
+
     if (isMobile) {
-      // Mobile: tap-to-select, double-tap to open modal
-      if (selectedNode?.id === node.id) {
-        // Same node tapped again - open modal
+      // Mobile: Double-tap to open modal
+      const now = Date.now()
+      const timeSinceLastTap = now - lastTapTime.current
+
+      if (timeSinceLastTap < DOUBLE_TAP_THRESHOLD && lastTappedNodeId.current === node.id) {
+        // Double-tap detected - open modal
         onNodeClick?.(node)
-        setSelectedNode(null) // Clear selection after opening modal
+        lastTapTime.current = 0
+        lastTappedNodeId.current = null
       } else {
-        // Different node or first tap - just select it (shows hover effect)
-        setSelectedNode(node)
+        // First tap - just record it (no visual feedback on mobile)
+        lastTapTime.current = now
+        lastTappedNodeId.current = node.id
       }
     } else {
-      // Desktop: click opens modal immediately
-      onNodeClick?.(node)
+      // Desktop: Single-click shows connections, double-click opens modal
+      if (lastClickedNode.current?.id === node.id && clickTimeout.current) {
+        // Double-click detected
+        clearTimeout(clickTimeout.current)
+        clickTimeout.current = null
+        lastClickedNode.current = null
+        onNodeClick?.(node)
+        setClickedNode(null)
+      } else {
+        // First click or different node
+        if (clickTimeout.current) clearTimeout(clickTimeout.current)
+        lastClickedNode.current = node
+        clickTimeout.current = setTimeout(() => {
+          setClickedNode(node)
+          clickTimeout.current = null
+          lastClickedNode.current = null
+        }, 300)
+      }
     }
-  }, [onNodeClick, isMobile, selectedNode])
+  }, [onNodeClick, isMobile])
+
+  // Cleanup click timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (clickTimeout.current) clearTimeout(clickTimeout.current)
+    }
+  }, [])
 
   // Handle zoom/pan to update parallax starfield
   const handleZoom = useCallback((transform) => {
@@ -322,8 +352,9 @@ function SpotifyGraph({
     }
   }, [onCameraChange])
 
-  // Handle background click to deselect on mobile
+  // Handle background click to clear connections and deselect on mobile
   const handleBackgroundClick = useCallback(() => {
+    setClickedNode(null)
     if (isMobile && selectedNode) {
       setSelectedNode(null)
     }
@@ -437,7 +468,6 @@ function SpotifyGraph({
         nodeCanvasObject={nodeCanvasObject}
         linkCanvasObject={linkCanvasObject}
         onNodeHover={handleNodeHover}
-        onLinkHover={handleLinkHover}
         onNodeClick={handleNodeClick}
         onBackgroundClick={handleBackgroundClick}
         onZoom={handleZoom}
@@ -474,23 +504,19 @@ function SpotifyGraph({
       )}
       
 
-      {/* Hover tooltip at bottom - show for hovered (desktop) or selected (mobile) node */}
-      {(hoveredNode || selectedNode) && (
+      {/* Hover tooltip at bottom - desktop only (no mobile tooltip) */}
+      {hoveredNode && (
         <div className="node-tooltip cosmic-tooltip">
-          <span className="node-tooltip__name">{(hoveredNode || selectedNode).name}</span>
-          {(hoveredNode || selectedNode).genres?.length > 0 && (
+          <span className="node-tooltip__name">{hoveredNode.name}</span>
+          {hoveredNode.genres?.length > 0 && (
             <span className="node-tooltip__genres">
-              {(hoveredNode || selectedNode).genres.slice(0, 3).join(' • ')}
+              {hoveredNode.genres.slice(0, 3).join(' • ')}
             </span>
           )}
-          {(hoveredNode || selectedNode).playcount && (
+          {hoveredNode.playcount && (
             <span className="node-tooltip__playcount">
-              {formatPlaycount((hoveredNode || selectedNode).playcount)} plays
+              {formatPlaycount(hoveredNode.playcount)} plays
             </span>
-          )}
-          {/* Mobile hint to tap again */}
-          {isMobile && selectedNode && !hoveredNode && (
-            <span className="node-tooltip__hint">Tap again to view details</span>
           )}
         </div>
       )}

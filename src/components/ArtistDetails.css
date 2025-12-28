@@ -194,6 +194,163 @@
   box-shadow: 0 4px 20px rgba(213, 16, 7, 0.4);
 }
 
+/* ========== TABS ========== */
+.artist-card__tabs {
+  display: flex;
+  gap: var(--spacing-xs);
+  padding: var(--spacing-md) var(--spacing-lg) 0;
+  border-bottom: 1px solid var(--color-bg-elevated);
+  background: var(--color-bg-secondary);
+}
+
+.artist-card__tab {
+  padding: var(--spacing-sm) var(--spacing-md);
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  transition: all var(--transition-fast);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-xs);
+}
+
+.artist-card__tab:hover {
+  color: var(--color-text-primary);
+  background: var(--color-bg-tertiary);
+}
+
+.artist-card__tab--active {
+  color: var(--color-accent);
+  border-bottom-color: var(--color-accent);
+}
+
+.artist-card__tab-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  background: var(--color-bg-elevated);
+  border-radius: 10px;
+  color: var(--color-text-secondary);
+}
+
+.artist-card__tab--active .artist-card__tab-badge {
+  background: var(--color-accent);
+  color: #000;
+}
+
+/* ========== CONNECTIONS TAB ========== */
+.artist-card__connections {
+  padding: var(--spacing-lg);
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.artist-card__empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-md);
+  padding: var(--spacing-xl);
+  color: var(--color-text-muted);
+  text-align: center;
+}
+
+.artist-card__connection-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-xs);
+}
+
+/* Connection Item */
+.connection-item {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-md);
+  padding: var(--spacing-sm);
+  background: var(--color-bg-tertiary);
+  border-radius: var(--radius-md);
+  transition: all var(--transition-fast);
+}
+
+.connection-item:hover {
+  background: var(--color-bg-elevated);
+  transform: translateX(2px);
+}
+
+.connection-item__image {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--radius-sm);
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.connection-item__image--placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-bg-secondary);
+  color: var(--color-text-muted);
+}
+
+.connection-item__info {
+  flex: 1;
+  min-width: 0;
+}
+
+.connection-item__name {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--color-text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin-bottom: 2px;
+}
+
+.connection-item__genres {
+  font-size: 0.75rem;
+  font-family: var(--font-mono);
+  color: var(--color-text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.connection-item__strength {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  min-width: 50px;
+  flex-shrink: 0;
+}
+
+.connection-item__percentage {
+  font-size: 1.125rem;
+  font-weight: 700;
+  font-family: var(--font-mono);
+  color: var(--color-accent);
+}
+
+.connection-item__label {
+  font-size: 0.625rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-muted);
+}
+
 /* ========== MOBILE FULL-SCREEN MODAL ========== */
 @media (max-width: 768px) {
   .artist-modal {
@@ -255,6 +412,29 @@
   
   .artist-card__link:last-of-type {
     margin-bottom: calc(var(--spacing-lg) + env(safe-area-inset-bottom));
+  }
+
+  /* Connections tab mobile adjustments */
+  .artist-card__connections {
+    max-height: none;
+    padding-bottom: calc(var(--spacing-lg) + env(safe-area-inset-bottom));
+  }
+
+  .connection-item {
+    padding: var(--spacing-md);
+  }
+
+  .connection-item__image {
+    width: 52px;
+    height: 52px;
+  }
+
+  .connection-item__name {
+    font-size: 1rem;
+  }
+
+  .connection-item__genres {
+    font-size: 0.8125rem;
   }
 }
 

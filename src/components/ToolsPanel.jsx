@@ -36,20 +36,6 @@ function ToolsPanel({ settings, onSettingsChange, showGenreLabels, onToggleGenre
         </div>
       
       <div className="tools-panel__content">
-        {/* Show All Labels Toggle */}
-        <div className="tools-panel__group">
-          <label className="toggle">
-            <span className="toggle__label">Show All Labels</span>
-            <div className="toggle__switch">
-              <input
-                type="checkbox"
-                checked={settings.showAllLabels}
-                onChange={(e) => handleChange('showAllLabels', e.target.checked)}
-              />
-              <span className="toggle__slider"></span>
-            </div>
-          </label>
-        </div>
 
         {/* Label Opacity */}
         <div className="tools-panel__group">
@@ -83,24 +69,6 @@ function ToolsPanel({ settings, onSettingsChange, showGenreLabels, onToggleGenre
               step="0.1"
               value={settings.nodeScale}
               onChange={(e) => handleChange('nodeScale', parseFloat(e.target.value))}
-            />
-          </label>
-        </div>
-
-        {/* Link Opacity */}
-        <div className="tools-panel__group">
-          <label className="slider">
-            <div className="slider__header">
-              <span className="slider__label">Connection Opacity</span>
-              <span className="slider__value">{Math.round(settings.linkOpacity * 100)}%</span>
-            </div>
-            <input
-              type="range"
-              min="0"
-              max="1"
-              step="0.05"
-              value={settings.linkOpacity}
-              onChange={(e) => handleChange('linkOpacity', parseFloat(e.target.value))}
             />
           </label>
         </div>
@@ -143,20 +111,6 @@ function ToolsPanel({ settings, onSettingsChange, showGenreLabels, onToggleGenre
 
         <div className="tools-panel__divider"></div>
 
-        {/* Genre Labels Toggle */}
-        <div className="tools-panel__group">
-          <label className="toggle">
-            <span className="toggle__label">Genre Clusters</span>
-            <div className="toggle__switch">
-              <input
-                type="checkbox"
-                checked={showGenreLabels}
-                onChange={onToggleGenreLabels}
-              />
-              <span className="toggle__slider"></span>
-            </div>
-          </label>
-        </div>
       </div>
     </div>
     </div>

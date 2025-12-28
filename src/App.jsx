@@ -1,7 +1,5 @@
 import { useState, useEffect } from 'react'
 import { Routes, Route } from 'react-router-dom'
-import { useSpotifyAuth } from './hooks/useSpotifyAuth'
-import { useSpotifyData } from './hooks/useSpotifyData'
 import { useLastFmData } from './hooks/useLastFmData'
 import Login from './components/Login'
 import Info from './components/Info'
@@ -26,23 +24,12 @@ const DEFAULT_SETTINGS = {
 const MOBILE_BREAKPOINT = 768
 
 function App() {
-  // Data source state
-  const [dataSource, setDataSource] = useState(null) // 'spotify' | 'lastfm' | null
+  // Last.fm username state
   const [lastfmUsername, setLastfmUsername] = useState(null)
-  
-  // Spotify auth
-  const { token, login: spotifyLogin, logout: spotifyLogout, isLoading: authLoading } = useSpotifyAuth()
-  
-  // Data hooks - only one will be active based on source
-  const spotifyData = useSpotifyData(dataSource === 'spotify' ? token : null)
-  const lastfmData = useLastFmData(dataSource === 'lastfm' ? lastfmUsername : null)
-  
-  // Get active data based on source (null dataSource = empty state, not lastfm)
-  const emptyData = { artists: [], graphData: { nodes: [], links: [], genreClusters: [] }, isLoading: false, error: null, progress: '' }
-  const activeData = dataSource === 'spotify' ? spotifyData : 
-                     dataSource === 'lastfm' ? lastfmData : 
-                     emptyData
-  const { artists, graphData, isLoading: dataLoading, error, progress } = activeData
+
+  // Last.fm data hook
+  const lastfmData = useLastFmData(lastfmUsername)
+  const { artists, graphData, isLoading: dataLoading, error, progress } = lastfmData
   
   const [selectedArtist, setSelectedArtist] = useState(null)
   const [showGenreLabels, setShowGenreLabels] = useState(false)
@@ -52,14 +39,6 @@ function App() {
   
   // Mobile detection for responsive styling
   const [isMobile, setIsMobile] = useState(false)
-
-  // Set data source to spotify when returning from OAuth with token
-  // Using useEffect instead of setting state during render
-  useEffect(() => {
-    if (token && !dataSource) {
-      setDataSource('spotify')
-    }
-  }, [token, dataSource])
 
   // Detect mobile viewport
   useEffect(() => {
@@ -71,24 +50,13 @@ function App() {
     return () => window.removeEventListener('resize', checkMobile)
   }, [])
 
-  // Handle Spotify login
-  const handleSpotifyLogin = () => {
-    setDataSource('spotify')
-    spotifyLogin()
-  }
-
   // Handle Last.fm login
   const handleLastFmLogin = async (username) => {
     setLastfmUsername(username)
-    setDataSource('lastfm')
   }
 
   // Handle logout
   const handleLogout = () => {
-    if (dataSource === 'spotify') {
-      spotifyLogout()
-    }
-    setDataSource(null)
     setLastfmUsername(null)
   }
 
@@ -99,7 +67,7 @@ function App() {
     const url = URL.createObjectURL(blob)
     const link = document.createElement('a')
     link.href = url
-    link.download = `${dataSource}_artists.json`
+    link.download = 'lastfm_artists.json'
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
@@ -107,40 +75,25 @@ function App() {
   }
 
   // Determine if we should show login
-  const showLogin = !authLoading && !dataSource && !token
+  const showLogin = !lastfmUsername
 
   // Determine app state classes
   const appClasses = [
     'app',
-    authLoading && 'app--loading',
     error && 'app--error'
   ].filter(Boolean).join(' ')
 
-  // Source color for loading spinner (default to Spotify green if dataSource not yet set)
-  const sourceColor = dataSource === 'lastfm' ? '#d51007' : '#1DB954'
+  // Last.fm red color for loading spinner
+  const sourceColor = '#d51007'
 
   // Render content based on current state
   const renderContent = () => {
     // Login screen
     if (showLogin) {
       return (
-        <Login 
-          onSpotifyLogin={handleSpotifyLogin} 
+        <Login
           onLastFmLogin={handleLastFmLogin}
         />
-      )
-    }
-
-    // Auth loading state OR transitional state (have token, waiting for dataSource to be set)
-    // This prevents the flash of Last.fm styled UI before useEffect sets dataSource
-    const isTransitioning = token && !dataSource
-    
-    if (authLoading || isTransitioning) {
-      return (
-        <div className="loader">
-          <div className="loader__ring"></div>
-          <span>Connecting...</span>
-        </div>
       )
     }
 
@@ -249,6 +202,7 @@ function App() {
             {selectedArtist && (
               <ArtistDetails
                 artist={selectedArtist}
+                graphData={graphData}
                 onClose={() => setSelectedArtist(null)}
               />
             )}

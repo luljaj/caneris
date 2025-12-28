@@ -1,7 +1,9 @@
 /**
- * Convert Spotify artists data to graph format for react-force-graph
+ * Convert artists data to graph format for react-force-graph
+ * @param {Array} artists - Array of normalized artist objects
+ * @param {Map} similarityMap - Optional map of artistName -> array of similar artists with match scores
  */
-export function artistsToGraphData(artists) {
+export function artistsToGraphData(artists, similarityMap = null) {
   if (!artists || artists.length === 0) {
     return { nodes: [], links: [] }
   }
@@ -25,93 +27,172 @@ export function artistsToGraphData(artists) {
     color: null
   }))
 
-  // Create edges based on shared genres - ensuring graph connectivity
-  const MAX_CONNECTIONS_PER_NODE = 5
-  const allPotentialLinks = []
-  
-  for (let i = 0; i < allNodes.length; i++) {
-    for (let j = i + 1; j < allNodes.length; j++) {
-      const sharedGenres = getSharedGenres(allNodes[i].genres, allNodes[j].genres)
-      
-      if (sharedGenres.length > 0) {
-        allPotentialLinks.push({
-          source: allNodes[i].id,
-          target: allNodes[j].id,
-          sharedGenres,
-          value: sharedGenres.length // Edge weight = number of shared genres
-        })
-      }
-    }
-  }
-  
-  // Sort by strength (most shared genres first) to prioritize strong connections
-  allPotentialLinks.sort((a, b) => b.value - a.value)
-  
-  // Union-Find for tracking connected components
-  const parent = {}
-  const find = (x) => {
-    if (parent[x] === undefined) parent[x] = x
-    if (parent[x] !== x) parent[x] = find(parent[x])
-    return parent[x]
-  }
-  const union = (x, y) => {
-    const px = find(x), py = find(y)
-    if (px !== py) {
-      parent[px] = py
-      return true // Merged two different components
-    }
-    return false // Already in same component
-  }
-  
-  // Track connection count per node
-  const connectionCount = {}
+  // Build lookup maps for quick access
+  const nodeById = new Map(allNodes.map(n => [n.id, n]))
+  const nodeByName = new Map(allNodes.map(n => [n.name.toLowerCase(), n]))
+
   const links = []
   const addedLinks = new Set()
-  
-  // PHASE 1: Add bridge connections that merge separate components
-  // These are critical for keeping the graph connected
-  for (const link of allPotentialLinks) {
-    const sourceCount = connectionCount[link.source] || 0
-    const targetCount = connectionCount[link.target] || 0
-    
-    // Check if this link would merge two different components
-    if (find(link.source) !== find(link.target)) {
-      // Only add if both nodes have room
+  const connectedNodeIds = new Set()
+
+  // Helper to add a link (prevents duplicates)
+  const addLink = (sourceId, targetId, linkType, value = 1) => {
+    const key = [sourceId, targetId].sort().join('|')
+    if (addedLinks.has(key)) return false
+    addedLinks.add(key)
+    links.push({
+      source: sourceId,
+      target: targetId,
+      linkType, // 'similarity' or 'genre'
+      value
+    })
+    connectedNodeIds.add(sourceId)
+    connectedNodeIds.add(targetId)
+    return true
+  }
+
+  // PHASE 1: Add similarity-based connections (if available)
+  if (similarityMap && similarityMap.size > 0) {
+    console.log('[Graph] Building similarity-based connections...')
+
+    // Collect all potential similarity links first
+    const allSimilarityLinks = []
+
+    for (const node of allNodes) {
+      const similarArtists = similarityMap.get(node.name.toLowerCase()) || []
+
+      for (const similar of similarArtists) {
+        const targetNode = nodeByName.get(similar.name.toLowerCase())
+        if (targetNode && targetNode.id !== node.id) {
+          allSimilarityLinks.push({
+            sourceId: node.id,
+            targetId: targetNode.id,
+            match: similar.match
+          })
+        }
+      }
+    }
+
+    // Sort by match score (strongest first)
+    allSimilarityLinks.sort((a, b) => b.match - a.match)
+
+    // Track visible connections per node (only top N are rendered)
+    const MAX_VISIBLE_CONNECTIONS = 5
+    const visibleConnectionCount = {}
+
+    // Add ALL connections but mark visibility based on strength ranking
+    for (const link of allSimilarityLinks) {
+      const sourceCount = visibleConnectionCount[link.sourceId] || 0
+      const targetCount = visibleConnectionCount[link.targetId] || 0
+
+      // Connection is visible if both nodes have room in their top 5
+      const isVisible = sourceCount < MAX_VISIBLE_CONNECTIONS && targetCount < MAX_VISIBLE_CONNECTIONS
+
+      const key = [link.sourceId, link.targetId].sort().join('|')
+      if (!addedLinks.has(key)) {
+        addedLinks.add(key)
+        links.push({
+          source: link.sourceId,
+          target: link.targetId,
+          linkType: 'similarity',
+          value: link.match * 10,
+          visible: isVisible
+        })
+        connectedNodeIds.add(link.sourceId)
+        connectedNodeIds.add(link.targetId)
+
+        if (isVisible) {
+          visibleConnectionCount[link.sourceId] = sourceCount + 1
+          visibleConnectionCount[link.targetId] = targetCount + 1
+        }
+      }
+    }
+
+    const visibleCount = links.filter(l => l.visible).length
+    console.log(`[Graph] Added ${links.length} connections (${visibleCount} visible, ${links.length - visibleCount} hidden but active)`)
+  }
+
+  // PHASE 2: Add genre-based connections for unconnected nodes (fallback)
+  const unconnectedNodes = allNodes.filter(n => !connectedNodeIds.has(n.id))
+
+  if (unconnectedNodes.length > 0) {
+    console.log(`[Graph] ${unconnectedNodes.length} nodes without similarity connections, using genre fallback...`)
+
+    // For unconnected nodes, try to connect via shared genres
+    for (const node of unconnectedNodes) {
+      if (node.genres.length === 0) continue
+
+      // Find best genre matches among ALL nodes
+      let bestMatches = []
+
+      for (const other of allNodes) {
+        if (other.id === node.id) continue
+        const sharedGenres = getSharedGenres(node.genres, other.genres)
+        if (sharedGenres.length > 0) {
+          bestMatches.push({
+            node: other,
+            sharedCount: sharedGenres.length
+          })
+        }
+      }
+
+      // Sort by shared genre count and take top matches
+      bestMatches.sort((a, b) => b.sharedCount - a.sharedCount)
+      const topMatches = bestMatches.slice(0, 5)
+
+      for (const match of topMatches) {
+        addLink(node.id, match.node.id, 'genre', match.sharedCount)
+      }
+    }
+
+    console.log(`[Graph] Total connections after genre fallback: ${links.length}`)
+  }
+
+  // If no similarityMap provided at all, use pure genre-based (legacy behavior for Spotify)
+  if (!similarityMap) {
+    console.log('[Graph] No similarity data, using genre-based connections...')
+    const MAX_CONNECTIONS_PER_NODE = 8 // Increased from 5
+
+    const allPotentialLinks = []
+
+    for (let i = 0; i < allNodes.length; i++) {
+      for (let j = i + 1; j < allNodes.length; j++) {
+        const sharedGenres = getSharedGenres(allNodes[i].genres, allNodes[j].genres)
+
+        if (sharedGenres.length > 0) {
+          allPotentialLinks.push({
+            source: allNodes[i].id,
+            target: allNodes[j].id,
+            sharedGenres,
+            value: sharedGenres.length
+          })
+        }
+      }
+    }
+
+    // Sort by strength (most shared genres first)
+    allPotentialLinks.sort((a, b) => b.value - a.value)
+
+    // Track connection count per node
+    const connectionCount = {}
+
+    for (const link of allPotentialLinks) {
+      const sourceCount = connectionCount[link.source] || 0
+      const targetCount = connectionCount[link.target] || 0
+
       if (sourceCount < MAX_CONNECTIONS_PER_NODE && targetCount < MAX_CONNECTIONS_PER_NODE) {
-        links.push(link)
-        addedLinks.add(`${link.source}-${link.target}`)
-        connectionCount[link.source] = sourceCount + 1
-        connectionCount[link.target] = targetCount + 1
-        union(link.source, link.target)
+        if (addLink(link.source, link.target, 'genre', link.value)) {
+          connectionCount[link.source] = sourceCount + 1
+          connectionCount[link.target] = targetCount + 1
+        }
       }
     }
   }
-  
-  // PHASE 2: Fill remaining slots with strong intra-cluster connections
-  for (const link of allPotentialLinks) {
-    // Skip if already added
-    if (addedLinks.has(`${link.source}-${link.target}`)) continue
-    
-    const sourceCount = connectionCount[link.source] || 0
-    const targetCount = connectionCount[link.target] || 0
-    
-    // Only add if both nodes have room for more connections
-    if (sourceCount < MAX_CONNECTIONS_PER_NODE && targetCount < MAX_CONNECTIONS_PER_NODE) {
-      links.push(link)
-      connectionCount[link.source] = sourceCount + 1
-      connectionCount[link.target] = targetCount + 1
-    }
-  }
 
-  // Find all node IDs that have at least one connection
-  const connectedNodeIds = new Set()
-  links.forEach(link => {
-    connectedNodeIds.add(link.source)
-    connectedNodeIds.add(link.target)
-  })
-
-  // Filter out nodes with no connections
+  // Filter to only connected nodes
   const nodes = allNodes.filter(node => connectedNodeIds.has(node.id))
+
+  console.log(`[Graph] Final: ${nodes.length} nodes, ${links.length} links`)
 
   // Calculate genre clusters and assign colors
   const genreClusters = calculateGenreClusters(nodes)
