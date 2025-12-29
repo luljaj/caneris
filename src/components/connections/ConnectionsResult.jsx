@@ -154,7 +154,7 @@ function ConnectionsResult({
 
         {wasOptimal ? (
           <p className="connections-result__optimal">
-            Perfect trajectory! You found the optimal course.
+            Perfect trajectory! You found an optimal course.
           </p>
         ) : (
           <p className="connections-result__suboptimal">

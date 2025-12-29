@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from 'react'
 import './ConnectionsMode.css'
 
 function ConnectionsSetup({
@@ -8,10 +9,29 @@ function ConnectionsSetup({
   onNewChallenge,
   onExit
 }) {
+  const [isExiting, setIsExiting] = useState(false)
+  const exitTimeoutRef = useRef(null)
+
+  useEffect(() => {
+    return () => {
+      if (exitTimeoutRef.current) {
+        clearTimeout(exitTimeoutRef.current)
+      }
+    }
+  }, [])
+
   if (!startArtist || !targetArtist) return null
 
+  const handleExit = () => {
+    if (isExiting) return
+    setIsExiting(true)
+    exitTimeoutRef.current = setTimeout(() => {
+      onExit?.()
+    }, 250)
+  }
+
   return (
-    <div className="connections-setup">
+    <div className={`connections-setup ${isExiting ? 'connections-setup--exit' : ''}`}>
       <div className="connections-setup__card">
         <h2 className="connections-setup__title">
           Connections
@@ -37,9 +57,15 @@ function ConnectionsSetup({
             </span>
           </div>
 
-          <div className="connections-setup__arrow">
-  
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <div className="connections-setup__arrow" aria-hidden="true">
+            <svg
+              className="connections-setup__arrow-icon"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+            >
               <path d="M5 12h14M12 5l7 7-7 7" />
             </svg>
           </div>
@@ -66,7 +92,7 @@ function ConnectionsSetup({
 
         <div className="connections-setup__actions">
           <button
-            className="btn btn--ghost"
+            className="btn btn--ghost connections-setup__random"
             onClick={onNewChallenge}
           >
             Random Trajectory
@@ -81,7 +107,7 @@ function ConnectionsSetup({
 
         <button
           className="connections-setup__exit"
-          onClick={onExit}
+          onClick={handleExit}
         >
           Exit
         </button>

@@ -60,7 +60,7 @@
 .mode-selector__dropdown {
   position: absolute;
   top: calc(100% + 8px);
-  left: 16px;
+  left: 5px;
   min-width: 200px;
   background: rgba(26, 26, 36, 0.95);
   border: 1px solid rgba(255, 255, 255, 0.1);

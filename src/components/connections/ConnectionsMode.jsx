@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { CONNECTIONS_CONFIG } from '../../config/connectionsConfig'
 import ConnectionsSetup from './ConnectionsSetup'
 import ConnectionsOverlay from './ConnectionsOverlay'
@@ -33,6 +33,21 @@ function ConnectionsMode({ graphData, connections, onExit }) {
   const blurTimeout = useRef(null)
   const suppressSuggestionsRef = useRef(false)
   const isHintSelecting = Boolean(gameState?.hintSelectionActive)
+  const nodeMap = useMemo(() => {
+    if (!graphData?.nodes) return new Map()
+    return new Map(graphData.nodes.map(node => [node.id, node]))
+  }, [graphData?.nodes])
+
+  const connectedArtists = useMemo(() => {
+    if (!connections?.adjacency || !gameState?.currentArtist) return []
+    const neighbors = connections.adjacency.get(gameState.currentArtist.id)
+    if (!neighbors) return []
+
+    return Array.from(neighbors)
+      .map(id => nodeMap.get(id))
+      .filter(Boolean)
+      .sort((a, b) => a.name.localeCompare(b.name))
+  }, [connections?.adjacency, gameState?.currentArtist, nodeMap])
 
   useEffect(() => {
     if (!startGame) return
@@ -128,6 +143,19 @@ function ConnectionsMode({ graphData, connections, onExit }) {
     }
   }
 
+  const handleConnectionSelect = (artistId) => {
+    if (isHintSelecting) return
+    handleSubmit(artistId)
+  }
+
+  const handleBack = () => {
+    if (!canBacktrack || !gameState?.path?.length) return
+    const previousId = gameState.path[gameState.path.length - 2]
+    if (previousId) {
+      goBackTo(previousId)
+    }
+  }
+
   const handleKeyDown = (event) => {
     if (!isPlaying || isHintSelecting) return
 
@@ -194,6 +222,11 @@ function ConnectionsMode({ graphData, connections, onExit }) {
         ? 'warning'
         : 'error')
     : null
+  const showSuccessToast = gameState?.lastGuessResult?.success
+    && gameState.lastGuessResult.type !== 'complete'
+  const showWarningToast = gameState?.lastGuessResult
+    && !gameState.lastGuessResult.success
+    && gameState.lastGuessResult.type === 'not_connected'
 
   const inputPlaceholder = isHintSelecting
     ? 'Select a hidden node...'
@@ -219,6 +252,8 @@ function ConnectionsMode({ graphData, connections, onExit }) {
           <ConnectionsOverlay
             currentArtist={gameState.currentArtist}
             targetArtist={gameState.targetArtist}
+            connectedArtists={connectedArtists}
+            onConnectionSelect={handleConnectionSelect}
             hops={gameState.hops}
             hintCount={gameState.hintCount}
             mode={gameState.mode}
@@ -229,13 +264,20 @@ function ConnectionsMode({ graphData, connections, onExit }) {
           />
 
           <div className="connections-panel">
+            {isHintSelecting && (
+              <div className="connections-panel__hint-inline">
+                Hint active. Click a hidden node to reveal it.
+              </div>
+            )}
             <div className="connections-panel__card">
               <div className="connections-panel__path">
                 <div className="connections-panel__path-header">
                   <span className="connections-panel__path-label">Your Path</span>
-                  <span className="connections-panel__path-meta">
-                    Guesses: {gameState.guessCount}
-                  </span>
+                  <div className="connections-panel__path-meta">
+                    <span>Guesses: {gameState.guessCount}</span>
+                    <span>Jumps: {gameState.hops}</span>
+                    <span>Hints: {gameState.hintCount}</span>
+                  </div>
                 </div>
 
                 <div className="connections-panel__path-list">
@@ -284,6 +326,14 @@ function ConnectionsMode({ graphData, connections, onExit }) {
                   />
                   <button
                     type="button"
+                    className="btn btn--ghost"
+                    onClick={handleBack}
+                    disabled={!canBacktrack || isHintSelecting}
+                  >
+                    Back
+                  </button>
+                  <button
+                    type="button"
                     className={`btn btn--ghost connections-panel__hint-button ${isHintSelecting ? 'is-active' : ''}`}
                     onClick={handleHint}
                     disabled={!isPlaying}
@@ -319,13 +369,7 @@ function ConnectionsMode({ graphData, connections, onExit }) {
                 </div>
               </div>
 
-              {isHintSelecting && (
-                <div className="connections-panel__hint">
-                  Hint active. Click a hidden node to reveal it.
-                </div>
-              )}
-
-              {gameState.lastGuessResult && (
+              {gameState.lastGuessResult && !gameState.lastGuessResult.success && gameState.lastGuessResult.type !== 'not_connected' && (
                 <div className={`connections-panel__feedback connections-panel__feedback--${feedbackType}`}>
                   {gameState.lastGuessResult.message}
                 </div>
@@ -333,6 +377,18 @@ function ConnectionsMode({ graphData, connections, onExit }) {
             </div>
           </div>
         </>
+      )}
+
+      {showSuccessToast && (
+        <div className="connections-toast">
+          {gameState.lastGuessResult.message}
+        </div>
+      )}
+
+      {showWarningToast && (
+        <div className="connections-toast connections-toast--warning">
+          {gameState.lastGuessResult.message}
+        </div>
       )}
 
       {isComplete && (
