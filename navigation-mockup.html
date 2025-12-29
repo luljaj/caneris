@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Caneris Navigation Mockup</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600&family=Cormorant+Garamond:wght@300;400&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      /* Colors - Deep space theme */
+      --color-bg-primary: #0a0a0f;
+      --color-bg-secondary: #12121a;
+      --color-bg-tertiary: #1a1a24;
+      --color-bg-elevated: #22222e;
+
+      --color-text-primary: #f0f0f5;
+      --color-text-secondary: #a0a0b0;
+      --color-text-muted: #606070;
+
+      --color-accent: #1DB954;
+      --color-accent-hover: #1ed760;
+
+      /* Typography */
+      --font-primary: 'Instrument Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+
+      /* Spacing */
+      --spacing-xs: 4px;
+      --spacing-sm: 8px;
+      --spacing-md: 16px;
+      --spacing-lg: 24px;
+      --spacing-xl: 32px;
+
+      /* Border radius */
+      --radius-sm: 6px;
+      --radius-md: 10px;
+      --radius-lg: 16px;
+      --radius-full: 9999px;
+
+      /* Shadows */
+      --shadow-md: 0 4px 20px rgba(0, 0, 0, 0.4);
+      --shadow-lg: 0 8px 40px rgba(0, 0, 0, 0.5);
+
+      /* Transitions */
+      --transition-fast: 150ms ease;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: var(--font-primary);
+      background: var(--color-bg-primary);
+      color: var(--color-text-primary);
+      height: 100vh;
+      overflow: hidden;
+      position: relative;
+    }
+
+    /* Simulated starfield background */
+    .starfield {
+      position: fixed;
+      inset: 0;
+      background:
+        radial-gradient(2px 2px at 20% 30%, white, transparent),
+        radial-gradient(2px 2px at 60% 70%, white, transparent),
+        radial-gradient(1px 1px at 50% 50%, white, transparent),
+        radial-gradient(1px 1px at 80% 10%, white, transparent),
+        radial-gradient(2px 2px at 90% 60%, white, transparent),
+        radial-gradient(1px 1px at 33% 80%, white, transparent),
+        radial-gradient(1px 1px at 15% 90%, white, transparent);
+      background-size: 200% 200%;
+      background-position: 0% 0%;
+      opacity: 0.3;
+      animation: drift 60s linear infinite;
+    }
+
+    @keyframes drift {
+      to { background-position: 100% 100%; }
+    }
+
+    /* Simulated graph placeholder */
+    .graph-placeholder {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--color-text-muted);
+      font-size: 1.2rem;
+      z-index: 1;
+    }
+
+    /* Header */
+    .header {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: var(--spacing-md) var(--spacing-lg);
+      background: linear-gradient(to bottom, #050510, transparent);
+      pointer-events: none;
+    }
+
+    .header > * {
+      pointer-events: auto;
+    }
+
+    .header__brand {
+      display: flex;
+      align-items: center;
+      gap: var(--spacing-md);
+    }
+
+    .header__title {
+      font-family: 'Cormorant Garamond', Georgia, serif;
+      font-size: 1.5rem;
+      font-weight: 300;
+      letter-spacing: 0.2em;
+      color: #f0f0f5;
+      margin: 0;
+    }
+
+    .header__actions {
+      display: flex;
+      align-items: center;
+      gap: var(--spacing-sm);
+    }
+
+    /* Mode selector */
+    .mode-selector {
+      position: relative;
+    }
+
+    .mode-selector__button {
+      display: flex;
+      align-items: center;
+      gap: var(--spacing-sm);
+      padding: var(--spacing-sm) var(--spacing-md);
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: var(--color-text-secondary);
+      background: rgba(255, 255, 255, 0.05);
+      border: none;
+      border-radius: var(--radius-full);
+      backdrop-filter: blur(10px);
+      cursor: pointer;
+      transition: all var(--transition-fast);
+    }
+
+    .mode-selector__button:hover {
+      color: var(--color-text-primary);
+      background: rgba(255, 255, 255, 0.12);
+    }
+
+    .mode-selector__button svg {
+      width: 14px;
+      height: 14px;
+      transition: transform var(--transition-fast);
+    }
+
+    .mode-selector__button[aria-expanded="true"] svg {
+      transform: rotate(180deg);
+    }
+
+    .mode-selector__dropdown {
+      position: absolute;
+      top: calc(100% + var(--spacing-sm));
+      left: 0;
+      min-width: 200px;
+      background: rgba(26, 26, 36, 0.95);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: var(--radius-md);
+      backdrop-filter: blur(20px);
+      box-shadow: var(--shadow-lg);
+      opacity: 0;
+      transform: translateY(-8px);
+      pointer-events: none;
+      transition: all var(--transition-fast);
+    }
+
+    .mode-selector__dropdown.open {
+      opacity: 1;
+      transform: translateY(0);
+      pointer-events: auto;
+    }
+
+    .mode-selector__option {
+      display: flex;
+      align-items: center;
+      gap: var(--spacing-sm);
+      padding: var(--spacing-md);
+      font-size: 0.9rem;
+      color: var(--color-text-secondary);
+      cursor: pointer;
+      transition: all var(--transition-fast);
+      border: none;
+      width: 100%;
+      text-align: left;
+      background: none;
+    }
+
+    .mode-selector__option:first-child {
+      border-radius: var(--radius-md) var(--radius-md) 0 0;
+    }
+
+    .mode-selector__option:last-child {
+      border-radius: 0 0 var(--radius-md) var(--radius-md);
+    }
+
+    .mode-selector__option:hover {
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--color-text-primary);
+    }
+
+    .mode-selector__option.active {
+      color: var(--color-accent);
+      background: rgba(29, 185, 84, 0.1);
+    }
+
+    .mode-selector__option-icon {
+      font-size: 1.1rem;
+    }
+
+    .mode-selector__option-label {
+      flex: 1;
+    }
+
+    /* Button styles */
+    .btn--icon {
+      width: 36px;
+      height: 36px;
+      padding: 0;
+      color: var(--color-text-secondary);
+      background: rgba(255, 255, 255, 0.05);
+      border: none;
+      border-radius: var(--radius-full);
+      backdrop-filter: blur(10px);
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+    }
+
+    .btn--icon:hover {
+      color: var(--color-text-primary);
+      background: rgba(255, 255, 255, 0.12);
+    }
+
+    .btn--icon:active {
+      transform: scale(0.97);
+    }
+
+    .btn--icon svg {
+      width: 18px;
+      height: 18px;
+    }
+
+    .btn--ghost {
+      display: flex;
+      align-items: center;
+      gap: var(--spacing-xs);
+      padding: var(--spacing-sm) var(--spacing-md);
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: var(--color-text-secondary);
+      background: rgba(255, 255, 255, 0.05);
+      border: none;
+      border-radius: var(--radius-full);
+      backdrop-filter: blur(10px);
+      cursor: pointer;
+      transition: all var(--transition-fast);
+    }
+
+    .btn--ghost:hover {
+      color: var(--color-text-primary);
+      background: rgba(255, 255, 255, 0.12);
+    }
+
+    .btn--ghost svg {
+      width: 18px;
+      height: 18px;
+    }
+
+    /* Mobile responsive */
+    @media (max-width: 768px) {
+      .header {
+        padding: var(--spacing-sm) var(--spacing-md);
+      }
+
+      .header__title {
+        font-size: 1.2rem;
+      }
+
+      .btn--ghost .btn__label {
+        display: none;
+      }
+
+      .btn--ghost {
+        width: 44px;
+        height: 44px;
+        padding: 0;
+      }
+
+      .btn--icon {
+        width: 44px;
+        height: 44px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <!-- Starfield background -->
+  <div class="starfield"></div>
+
+  <!-- Graph placeholder -->
+  <div class="graph-placeholder">
+    Your Constellation Here
+  </div>
+
+  <!-- Header -->
+  <header class="header">
+    <div class="header__brand">
+      <h1 class="header__title">CANERIS</h1>
+
+      <!-- Mode Selector -->
+      <div class="mode-selector">
+        <button
+          class="mode-selector__button"
+          id="modeButton"
+          aria-expanded="false"
+          aria-haspopup="true"
+        >
+          <span id="currentMode">Explore</span>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="6 9 12 15 18 9"></polyline>
+          </svg>
+        </button>
+
+        <div class="mode-selector__dropdown" id="modeDropdown">
+          <button class="mode-selector__option active" data-mode="explore">
+            <span class="mode-selector__option-icon">🌌</span>
+            <span class="mode-selector__option-label">Explore</span>
+          </button>
+          <button class="mode-selector__option" data-mode="connections">
+            <span class="mode-selector__option-icon">🎮</span>
+            <span class="mode-selector__option-label">Connections</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div class="header__actions">
+      <!-- Settings -->
+      <button class="btn--icon" title="Settings">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M12 15a3 3 0 100-6 3 3 0 000 6z"/>
+          <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/>
+        </svg>
+      </button>
+
+      <!-- Logout -->
+      <button class="btn--ghost" title="Logout">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/>
+          <polyline points="16,17 21,12 16,7"/>
+          <line x1="21" y1="12" x2="9" y2="12"/>
+        </svg>
+        <span class="btn__label">Logout</span>
+      </button>
+    </div>
+  </header>
+
+  <script>
+    // Mode selector dropdown
+    const modeButton = document.getElementById('modeButton');
+    const modeDropdown = document.getElementById('modeDropdown');
+    const currentModeText = document.getElementById('currentMode');
+    const modeOptions = document.querySelectorAll('.mode-selector__option');
+
+    modeButton.addEventListener('click', () => {
+      const isOpen = modeButton.getAttribute('aria-expanded') === 'true';
+      modeButton.setAttribute('aria-expanded', !isOpen);
+      modeDropdown.classList.toggle('open');
+    });
+
+    modeOptions.forEach(option => {
+      option.addEventListener('click', () => {
+        const mode = option.dataset.mode;
+        const label = option.querySelector('.mode-selector__option-label').textContent;
+
+        // Update active state
+        modeOptions.forEach(opt => opt.classList.remove('active'));
+        option.classList.add('active');
+
+        // Update button text
+        currentModeText.textContent = label;
+
+        // Close dropdown
+        modeButton.setAttribute('aria-expanded', 'false');
+        modeDropdown.classList.remove('open');
+
+        console.log('Switched to mode:', mode);
+      });
+    });
+
+    // Close dropdown when clicking outside
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest('.mode-selector')) {
+        modeButton.setAttribute('aria-expanded', 'false');
+        modeDropdown.classList.remove('open');
+      }
+    });
+  </script>
+</body>
+</html>

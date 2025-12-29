@@ -1,0 +1,98 @@
+.mode-selector {
+  position: relative;
+}
+
+.mode-selector__button {
+  display: flex;
+  align-items: center;
+  gap: var(--spacing-sm, 8px);
+  padding: var(--spacing-sm, 8px) var(--spacing-md, 16px);
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--color-text-secondary, #a0a0b0);
+  background: rgba(255, 255, 255, 0.05);
+  border: none;
+  border-radius: 9999px;
+  backdrop-filter: blur(10px);
+  cursor: pointer;
+  transition: all 150ms ease;
+}
+
+.mode-selector__button:hover {
+  color: var(--color-text-primary, #f0f0f5);
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.mode-selector__button svg {
+  width: 14px;
+  height: 14px;
+  transition: transform 150ms ease;
+}
+
+.mode-selector__button svg.rotated {
+  transform: rotate(180deg);
+}
+
+.mode-selector__dropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 16px;
+  min-width: 200px;
+  background: rgba(26, 26, 36, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  backdrop-filter: blur(20px);
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.5);
+  opacity: 0;
+  transform: translateY(-8px);
+  pointer-events: none;
+  transition: all 150ms ease;
+}
+
+.mode-selector__dropdown.open {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+.mode-selector__option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px;
+  font-size: 0.9rem;
+  color: var(--color-text-secondary, #a0a0b0);
+  cursor: pointer;
+  transition: all 150ms ease;
+  border: none;
+  width: 100%;
+  text-align: left;
+  background: none;
+}
+
+.mode-selector__option:first-child {
+  border-radius: 10px 10px 0 0;
+}
+
+.mode-selector__option:last-child {
+  border-radius: 0 0 10px 10px;
+}
+
+.mode-selector__option:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--color-text-primary, #f0f0f5);
+}
+
+.mode-selector__option.active {
+  color: #1DB954;
+  background: rgba(29, 185, 84, 0.1);
+}
+
+.mode-selector__option-icon {
+  font-size: 1.1rem;
+  display: none;
+}
+
+.mode-selector__option-label {
+  flex: 1;
+}

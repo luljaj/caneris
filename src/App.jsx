@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Routes, Route } from 'react-router-dom'
 import { useLastFmData } from './hooks/useLastFmData'
+import { useConnectionsGame } from './hooks/useConnectionsGame'
 import Login from './components/Login'
 import Info from './components/Info'
 import Loader from './components/Loader'
@@ -8,6 +9,8 @@ import Graph from './components/Graph'
 import ToolsPanel from './components/ToolsPanel'
 import ArtistDetails from './components/ArtistDetails'
 import Starfield from './components/Starfield'
+import ModeSelector from './components/ModeSelector'
+import ConnectionsMode from './components/connections/ConnectionsMode'
 import { Analytics } from "@vercel/analytics/react"
 import { DEFAULT_SETTINGS } from './config/graphSettings'
 import './App.css'
@@ -37,7 +40,9 @@ function App() {
   const [graphSettings, setGraphSettings] = useState(DEFAULT_SETTINGS)
   const [showSettings, setShowSettings] = useState(false)
   const [cameraOffset, setCameraOffset] = useState({ x: 0, y: 0 })
-  
+  const [appMode, setAppMode] = useState('explore')
+  const connectionsGame = useConnectionsGame(graphData)
+
   // Mobile detection for responsive styling
   const [isMobile, setIsMobile] = useState(false)
 
@@ -71,6 +76,19 @@ function App() {
     }
     setShowSettings(false)
     setLastfmUsername(null)
+  }
+
+  const handleModeChange = (newMode) => {
+    setAppMode(newMode)
+    setSelectedArtist(null)
+    setShowSettings(false)
+    if (newMode !== 'connections') {
+      connectionsGame.exitGame()
+    }
+  }
+
+  const handleConnectionsExit = () => {
+    setAppMode('explore')
   }
 
   // Export artist data as JSON file
@@ -132,6 +150,13 @@ function App() {
         <header className={headerClasses}>
           <div className="header__brand">
             <h1 className="header__title">CANERIS</h1>
+
+            {artists.length > 0 && (
+              <ModeSelector
+                currentMode={appMode}
+                onModeChange={handleModeChange}
+              />
+            )}
           </div>
           <div className="header__actions">
             {artists.length > 0 && (
@@ -166,12 +191,22 @@ function App() {
           ) : (
             <Graph
               data={graphData}
-              onNodeClick={setSelectedArtist}
+              onNodeClick={appMode === 'explore' ? setSelectedArtist : null}
               showGenreLabels={showGenreLabels}
               showArtistLabels={showArtistLabels}
               settings={graphSettings}
               onCameraChange={setCameraOffset}
               isMobile={isMobile}
+              mode={appMode}
+              connectionsState={appMode === 'connections' ? connectionsGame : null}
+            />
+          )}
+
+          {appMode === 'connections' && graphData.nodes.length > 0 && (
+            <ConnectionsMode
+              graphData={graphData}
+              connections={connectionsGame}
+              onExit={handleConnectionsExit}
             />
           )}
         </main>
@@ -202,7 +237,7 @@ function App() {
               />
             )}
 
-            {selectedArtist && (
+            {appMode === 'explore' && selectedArtist && (
               <ArtistDetails
                 artist={selectedArtist}
                 graphData={graphData}

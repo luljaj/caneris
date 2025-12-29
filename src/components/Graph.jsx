@@ -3,6 +3,7 @@ import ForceGraph2D from 'react-force-graph-2d'
 import { forceCenter, forceX, forceY } from 'd3-force'
 import { calculateClusterCenters } from '../utils/graphUtils'
 import { DEFAULT_SETTINGS } from '../config/graphSettings'
+import { CONNECTIONS_CONFIG } from '../config/connectionsConfig'
 import './Graph.css'
 
 function Graph({
@@ -12,7 +13,10 @@ function Graph({
   showArtistLabels,
   settings,
   onCameraChange,
-  isMobile
+  isMobile,
+  mode = 'explore',
+  connectionsState = null,
+  onConnectionsNodeClick = null
 }) {
   const graphRef = useRef()
   const containerRef = useRef()
@@ -45,6 +49,29 @@ function Graph({
   const normalizedLinkOpacity = Number.isFinite(linkOpacity)
     ? Math.min(1, Math.max(0, linkOpacity))
     : 1
+
+  const getNodeHighlightState = useCallback((node) => {
+    if (mode !== 'connections' || !connectionsState) {
+      return 'normal'
+    }
+
+    if (typeof connectionsState.getNodeState === 'function') {
+      return connectionsState.getNodeState(node.id)
+    }
+
+    const { currentArtist, targetArtist, path } = connectionsState
+
+    if (node.id === currentArtist?.id) return 'current'
+    if (node.id === targetArtist?.id) return 'target'
+    if (path?.includes(node.id)) return 'path'
+
+    const isAvailable = connectionsState.availableConnections?.some(
+      n => n.id === node.id
+    )
+    if (isAvailable) return 'available'
+
+    return 'dimmed'
+  }, [mode, connectionsState])
 
   // Handle window resize
   useEffect(() => {
@@ -187,18 +214,100 @@ function Graph({
   const nodeCanvasObject = useCallback((node, ctx, globalScale) => {
     // Guard: skip rendering if position is not yet calculated
     if (!Number.isFinite(node.x) || !Number.isFinite(node.y)) return
-    
+
     const baseSize = (node.val || 5) * nodeScale
     const size = Math.max(6, baseSize)
-    // Show glow for hovered or clicked node (desktop only, mobile has no hover/click feedback)
-    const isHovered = hoveredNode?.id === node.id || clickedNode?.id === node.id
-    
-    // Get node color with cosmic tint
+    const highlightState = getNodeHighlightState(node)
+    const isHovered = hoveredNode?.id === node.id
+      || (mode !== 'connections' && clickedNode?.id === node.id)
+
     const nodeColor = node.color || '#6366f1'
-    
-    // Draw outer glow (always present but subtle, stronger on hover)
-    const glowRadius = size * (isHovered ? 3 : 1.8)
-    const glowOpacity = isHovered ? 0.6 : 0.15
+    const visuals = CONNECTIONS_CONFIG.visuals
+
+    let nodeOpacity = 1
+    let glowIntensity = 1
+    let ringColor = 'rgba(255, 255, 255, 0.15)'
+    let glowRadius = size * (isHovered ? 3 : 1.8)
+    let glowOpacity = isHovered ? 0.6 : 0.15
+
+    switch (highlightState) {
+      case 'current':
+        glowIntensity = 3
+        ringColor = visuals.currentNodeColor || '#FFD700'
+        glowRadius = size * 3.5
+        glowOpacity = 0.7
+        break
+      case 'target':
+        glowIntensity = 2.5
+        ringColor = visuals.targetNodeColor || '#EC4899'
+        glowRadius = size * 2.8
+        glowOpacity = 0.6
+        break
+      case 'start':
+      case 'path':
+        glowIntensity = 1.5
+        ringColor = visuals.pathColor || '#60A5FA'
+        glowRadius = size * 2.2
+        glowOpacity = 0.4
+        break
+      case 'available':
+        glowIntensity = 1.8
+        ringColor = 'rgba(255, 255, 255, 0.5)'
+        glowRadius = size * 2.5
+        glowOpacity = 0.35
+        break
+      case 'failed':
+        glowIntensity = 1.2
+        ringColor = visuals.failedGuessColor || '#EF4444'
+        nodeOpacity = visuals.revealedOpacity ?? 0.4
+        glowRadius = size * 2.1
+        glowOpacity = 0.25
+        break
+      case 'hidden':
+        glowIntensity = 0.2
+        nodeOpacity = visuals.hiddenOpacity ?? 0.08
+        ringColor = 'rgba(255, 255, 255, 0.05)'
+        glowRadius = size * 1.4
+        glowOpacity = 0.02
+        break
+      case 'dimmed':
+        nodeOpacity = 0.15
+        glowIntensity = 0.3
+        glowRadius = size * 1.5
+        glowOpacity = 0.05
+        break
+    }
+
+    ctx.globalAlpha = nodeOpacity
+
+    if (highlightState === 'dimmed') {
+      const gradient = ctx.createRadialGradient(
+        node.x, node.y, size * 0.5,
+        node.x, node.y, glowRadius
+      )
+      gradient.addColorStop(0, `${nodeColor}${Math.round(glowOpacity * 255).toString(16).padStart(2, '0')}`)
+      gradient.addColorStop(0.5, `${nodeColor}${Math.round(glowOpacity * 0.5 * 255).toString(16).padStart(2, '0')}`)
+      gradient.addColorStop(1, 'rgba(0, 0, 0, 0)')
+
+      ctx.beginPath()
+      ctx.arc(node.x, node.y, glowRadius, 0, Math.PI * 2)
+      ctx.fillStyle = gradient
+      ctx.fill()
+    } else {
+      // Draw outer glow (always present but subtle, stronger on hover)
+      const gradient = ctx.createRadialGradient(
+        node.x, node.y, size * 0.5,
+        node.x, node.y, glowRadius
+      )
+      gradient.addColorStop(0, `${nodeColor}${Math.round(glowOpacity * 255).toString(16).padStart(2, '0')}`)
+      gradient.addColorStop(0.5, `${nodeColor}${Math.round(glowOpacity * 0.5 * 255).toString(16).padStart(2, '0')}`)
+      gradient.addColorStop(1, 'rgba(0, 0, 0, 0)')
+
+      ctx.beginPath()
+      ctx.arc(node.x, node.y, glowRadius, 0, Math.PI * 2)
+      ctx.fillStyle = gradient
+      ctx.fill()
+    }
     
     const gradient = ctx.createRadialGradient(
       node.x, node.y, size * 0.5,
@@ -219,10 +328,10 @@ function Graph({
     ctx.arc(node.x, node.y, size, 0, Math.PI * 2)
     ctx.closePath()
     ctx.clip()
-    
-    // Try to draw the artist image
+
+    const hideImage = highlightState === 'hidden'
     const cachedImage = imageCache.current[node.id]
-    if (cachedImage) {
+    if (cachedImage && !hideImage) {
       try {
         ctx.drawImage(
           cachedImage,
@@ -231,38 +340,44 @@ function Graph({
           size * 2,
           size * 2
         )
-        // Add a subtle color overlay to blend with theme
         ctx.fillStyle = `${nodeColor}22`
         ctx.fill()
       } catch {
-        // Fallback to solid color
         ctx.fillStyle = nodeColor
         ctx.fill()
       }
     } else {
-      // No image available - draw gradient planet
-      const planetGradient = ctx.createRadialGradient(
-        node.x - size * 0.3, node.y - size * 0.3, 0,
-        node.x, node.y, size
-      )
-      planetGradient.addColorStop(0, lightenColor(nodeColor, 40))
-      planetGradient.addColorStop(0.7, nodeColor)
-      planetGradient.addColorStop(1, darkenColor(nodeColor, 30))
-      ctx.fillStyle = planetGradient
+      if (hideImage) {
+        ctx.fillStyle = 'rgba(10, 10, 18, 0.9)'
+      } else {
+        const planetGradient = ctx.createRadialGradient(
+          node.x - size * 0.3, node.y - size * 0.3, 0,
+          node.x, node.y, size
+        )
+        planetGradient.addColorStop(0, lightenColor(nodeColor, 40))
+        planetGradient.addColorStop(0.7, nodeColor)
+        planetGradient.addColorStop(1, darkenColor(nodeColor, 30))
+        ctx.fillStyle = planetGradient
+      }
       ctx.fill()
     }
-    
+
     ctx.restore()
-    
-    // Add subtle ring/border (scales with node size)
+
     ctx.beginPath()
     ctx.arc(node.x, node.y, size, 0, Math.PI * 2)
-    ctx.strokeStyle = isHovered ? 'rgba(255, 255, 255, 0.6)' : 'rgba(255, 255, 255, 0.15)'
+    ctx.strokeStyle = ringColor
     ctx.lineWidth = isHovered ? Math.max(1.5, size * 0.1) : 0.5
     ctx.stroke()
+
+    ctx.globalAlpha = 1
     
     // Draw persistent artist label (small, above node)
-    if (showArtistLabels && !isHovered) {
+    const showPersistentLabel = mode === 'connections'
+      ? highlightState !== 'hidden'
+      : showArtistLabels
+
+    if (showPersistentLabel && !isHovered) {
       const label = node.name
       const fontSize = Math.max(8, Math.min(10, size * 0.5))
       ctx.font = `500 ${fontSize}px 'Inter', 'Instrument Sans', system-ui, sans-serif`
@@ -281,7 +396,7 @@ function Graph({
     }
 
     // Draw name label on hover (larger, below node with background)
-    if (isHovered) {
+    if (isHovered && highlightState !== 'hidden') {
       const label = node.name
       const fontSize = Math.max(11, Math.min(16, size * 0.8))
       ctx.font = `600 ${fontSize}px 'Inter', 'Instrument Sans', system-ui, sans-serif`
@@ -312,7 +427,7 @@ function Graph({
       ctx.fillStyle = '#ffffff'
       ctx.fillText(label, node.x, labelY + 2)
     }
-  }, [hoveredNode, clickedNode, nodeScale, showArtistLabels, normalizedLabelOpacity])
+  }, [hoveredNode, clickedNode, nodeScale, showArtistLabels, normalizedLabelOpacity, getNodeHighlightState, mode])
 
   // Custom link rendering - simple constellation lines, brighter for clicked node connections
   const linkCanvasObject = useCallback((link, ctx) => {
@@ -326,76 +441,110 @@ function Graph({
       !Number.isFinite(end.y)
     ) return
 
-    // Check if this link is connected to clicked node
     const isConnectedToClicked = clickedNode?.id === start.id || clickedNode?.id === end.id
 
-    // Skip rendering invisible links unless connected to clicked node
     if (link.visible === false && !isConnectedToClicked) {
-      return // Don't render - but link still affects physics
+      return
     }
 
-    // Calculate strength from link value (0-10 scale, where 10 = perfect match)
     const strength = Math.min(1, Math.max(0.1, (link.value || 1) / 10))
 
-    // Calculate opacity and width based on whether connected to clicked node
-    const baseOpacity = isConnectedToClicked
-      ? 0.08 + strength * 0.20  // Brighter when showing connections
-      : 0.03 + strength * 0.12  // Default subtle
-    const opacity = Math.min(1, baseOpacity * normalizedLinkOpacity)
+    let linkOpacity, lineWidth, linkColor
 
-    const lineWidth = isConnectedToClicked
-      ? 0.5 + strength * 1.0    // Slightly thicker when active
-      : 0.3 + strength * 0.7    // Default thin
+    if (mode === 'connections' && connectionsState) {
+      const path = connectionsState.gameState?.path || connectionsState.path || []
+      const isInPath = path.includes(start.id) && path.includes(end.id)
 
-    // Draw the link
+      const startIdx = path.indexOf(start.id)
+      const endIdx = path.indexOf(end.id)
+
+      const isPathEdge = isInPath && Math.abs(startIdx - endIdx) === 1
+
+      if (isPathEdge) {
+        linkColor = '#1DB954'
+        linkOpacity = 0.8 * normalizedLinkOpacity
+        lineWidth = 2.5
+      } else if (isInPath) {
+        linkColor = 'rgba(29, 185, 84, 0.4)'
+        linkOpacity = 0.4 * normalizedLinkOpacity
+        lineWidth = 1.5
+      } else {
+        linkColor = 'rgba(100, 120, 160, 0.5)'
+        linkOpacity = 0.05 * normalizedLinkOpacity
+        lineWidth = 0.3 + strength * 0.7
+      }
+    } else {
+      const baseOpacity = isConnectedToClicked
+        ? 0.08 + strength * 0.20
+        : 0.03 + strength * 0.12
+      linkOpacity = Math.min(1, baseOpacity * normalizedLinkOpacity)
+      linkColor = `rgba(100, 120, 160, ${linkOpacity})`
+      lineWidth = isConnectedToClicked
+        ? 0.5 + strength * 1.0
+        : 0.3 + strength * 0.7
+    }
+
     ctx.beginPath()
     ctx.moveTo(start.x, start.y)
     ctx.lineTo(end.x, end.y)
-    ctx.strokeStyle = `rgba(100, 120, 160, ${opacity})`
+    ctx.strokeStyle = linkColor
     ctx.lineWidth = lineWidth
     ctx.stroke()
-  }, [clickedNode, normalizedLinkOpacity])
+  }, [clickedNode, normalizedLinkOpacity, mode, connectionsState])
 
   // Handle node hover
   const handleNodeHover = useCallback((node) => {
+    if (mode === 'connections' && node) {
+      const highlightState = getNodeHighlightState(node)
+      if (highlightState === 'hidden') {
+        setHoveredNode(null)
+        const canvas = containerRef.current?.querySelector('canvas')
+        if (canvas) {
+          canvas.style.cursor = 'grab'
+        }
+        return
+      }
+    }
+
     setHoveredNode(node)
     // Set cursor on canvas element directly to avoid conflicts
     const canvas = containerRef.current?.querySelector('canvas')
     if (canvas) {
-      canvas.style.cursor = node ? 'pointer' : 'grab'
+      canvas.style.cursor = mode === 'connections' ? 'grab' : (node ? 'pointer' : 'grab')
     }
-  }, [])
+  }, [mode, getNodeHighlightState])
 
   // Handle node click - different behavior for mobile vs desktop
   const handleNodeClick = useCallback((node) => {
     if (!node) return
 
+    if (mode === 'connections') {
+      if (onConnectionsNodeClick) {
+        onConnectionsNodeClick(node)
+      }
+      return
+    }
+
     if (isMobile) {
-      // Mobile: Double-tap to open modal
       const now = Date.now()
       const timeSinceLastTap = now - lastTapTime.current
 
       if (timeSinceLastTap < DOUBLE_TAP_THRESHOLD && lastTappedNodeId.current === node.id) {
-        // Double-tap detected - open modal
         onNodeClick?.(node)
         lastTapTime.current = 0
         lastTappedNodeId.current = null
       } else {
-        // First tap - just record it (no visual feedback on mobile)
         lastTapTime.current = now
         lastTappedNodeId.current = node.id
       }
     } else {
-      // Desktop: Single-click shows connections, double-click opens modal
       if (lastClickedNode.current?.id === node.id && clickTimeout.current) {
-        // Double-click detected
         clearTimeout(clickTimeout.current)
         clickTimeout.current = null
         lastClickedNode.current = null
         onNodeClick?.(node)
         setClickedNode(null)
       } else {
-        // First click or different node
         if (clickTimeout.current) clearTimeout(clickTimeout.current)
         lastClickedNode.current = node
         clickTimeout.current = setTimeout(() => {
@@ -405,7 +554,7 @@ function Graph({
         }, 300)
       }
     }
-  }, [onNodeClick, isMobile])
+  }, [onNodeClick, isMobile, mode, onConnectionsNodeClick])
 
   // Cleanup click timeout on unmount
   useEffect(() => {
