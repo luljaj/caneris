@@ -14,7 +14,8 @@ function ConnectionsResult({
   endTime,
   nodes,
   onPlayAgain,
-  onExit
+  onExit,
+  constellationLabel
 }) {
   const timeElapsed = startTime && endTime
     ? ((endTime - startTime) / 1000).toFixed(1)
@@ -34,6 +35,12 @@ function ConnectionsResult({
         <h2 className="connections-result__title">
           Course Navigated
         </h2>
+
+        {constellationLabel && (
+          <p className="connections-result__subtitle">
+            Played on {constellationLabel}
+          </p>
+        )}
 
         {!showOptimalPath ? (
           <div className="connections-result__path">

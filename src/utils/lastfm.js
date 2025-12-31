@@ -228,6 +228,35 @@ export async function validateUsername(username) {
 }
 
 /**
+ * Fetch Last.fm user profile info
+ * @param {string} username - Last.fm username
+ * @returns {Object} user profile data
+ */
+export async function fetchUserInfo(username) {
+  if (!API_KEY) {
+    throw new Error('Missing VITE_LASTFM_API_KEY')
+  }
+
+  const params = new URLSearchParams({
+    method: 'user.getinfo',
+    user: username,
+    api_key: API_KEY,
+    format: 'json'
+  })
+
+  const response = await fetch(`${LASTFM_API_BASE}?${params}`)
+  const data = await response.json()
+
+  if (data.error) {
+    const error = new Error(data.message || 'Failed to load Last.fm user info')
+    error.code = data.error
+    throw error
+  }
+
+  return data.user
+}
+
+/**
  * Fetch similar artists for all artists in batch
  * @param {Array} artists - Array of artist objects with name property
  * @param {Function} onProgress - Progress callback (current, total)

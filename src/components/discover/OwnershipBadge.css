@@ -1,0 +1,86 @@
+.ownership-stack {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  margin-left: 12px;
+}
+
+.ownership-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: var(--radius-full);
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--color-text-secondary);
+  font-size: 0.75rem;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  transition: all 150ms ease;
+  max-width: 220px;
+}
+
+.ownership-badge:hover {
+  color: var(--color-text-primary);
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.ownership-stack__action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 10px;
+  border-radius: var(--radius-full);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: var(--color-text-secondary);
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  transition: all 150ms ease;
+}
+
+.ownership-stack__action:hover {
+  color: var(--color-text-primary);
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.ownership-stack__action:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.ownership-badge__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.ownership-badge__text {
+  display: inline-block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@media (max-width: 768px) {
+  .ownership-stack {
+    margin-left: 8px;
+  }
+
+  .ownership-badge {
+    max-width: 140px;
+    padding: 6px 10px;
+  }
+}
+
+@media (max-width: 480px) {
+  .ownership-badge__text {
+    max-width: 90px;
+  }
+}

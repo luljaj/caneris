@@ -5,7 +5,7 @@ import ConnectionsOverlay from './ConnectionsOverlay'
 import ConnectionsResult from './ConnectionsResult'
 import './ConnectionsMode.css'
 
-function ConnectionsMode({ graphData, connections, onExit }) {
+function ConnectionsMode({ graphData, connections, onExit, constellationLabel }) {
   const {
     gameState,
     isIdle,
@@ -30,6 +30,7 @@ function ConnectionsMode({ graphData, connections, onExit }) {
   const [activeIndex, setActiveIndex] = useState(-1)
   const [isFocused, setIsFocused] = useState(false)
   const [lastAddedIndex, setLastAddedIndex] = useState(null)
+  const [showConnections, setShowConnections] = useState(false)
   const inputRef = useRef(null)
   const pathListRef = useRef(null)
   const addTimerRef = useRef(null)
@@ -66,6 +67,7 @@ function ConnectionsMode({ graphData, connections, onExit }) {
       setSuggestions([])
       setActiveIndex(-1)
       setLastAddedIndex(null)
+      setShowConnections(false)
       previousPathLength.current = 0
     }
   }, [isPlaying])
@@ -188,6 +190,10 @@ function ConnectionsMode({ graphData, connections, onExit }) {
     handleSubmit(artistId)
   }
 
+  const handleToggleConnections = () => {
+    setShowConnections((prev) => !prev)
+  }
+
   const handleBack = () => {
     if (!canBacktrack || !gameState?.path?.length) return
     const previousId = gameState.path[gameState.path.length - 2]
@@ -270,7 +276,7 @@ function ConnectionsMode({ graphData, connections, onExit }) {
 
   const inputPlaceholder = isHintSelecting
     ? 'Select a hidden artist...'
-    : 'Plot the path to next artist...'
+    : `Plot the path to ${gameState?.targetArtist?.name || 'destination'}`
 
   const jumpClass = useMemo(() => {
     const hops = gameState?.hops ?? 0
@@ -299,6 +305,7 @@ function ConnectionsMode({ graphData, connections, onExit }) {
           onStart={beginPlaying}
           onNewChallenge={newChallenge}
           onExit={handleExit}
+          constellationLabel={constellationLabel}
         />
       )}
 
@@ -309,17 +316,13 @@ function ConnectionsMode({ graphData, connections, onExit }) {
             targetArtist={gameState.targetArtist}
             connectedArtists={connectedArtists}
             onConnectionSelect={handleConnectionSelect}
-            onBack={handleBack}
-            onHint={handleHint}
-            canBack={canBacktrack}
-            isHintSelecting={isHintSelecting}
-            hops={gameState.hops}
-            hintCount={gameState.hintCount}
+            showConnections={showConnections}
+            onToggleConnections={handleToggleConnections}
             mode={gameState.mode}
             startTime={gameState.startTime}
             canUndo={false}
             onUndo={() => {}}
-            onExit={handleExit}
+            constellationLabel={constellationLabel}
           />
 
           <div className="connections-panel">
@@ -393,6 +396,30 @@ function ConnectionsMode({ graphData, connections, onExit }) {
 
               <div className="connections-panel__input-wrap">
                 <div className="connections-panel__input">
+                  <button
+                    type="button"
+                    className="connections-panel__action-button"
+                    onClick={handleBack}
+                    disabled={!canBacktrack || isHintSelecting}
+                    aria-label="Go back"
+                  >
+                    <svg viewBox="0 0 24 24" width="16" height="16">
+                      <path d="M15 18l-6-6 6-6" stroke="currentColor" fill="none" strokeWidth="2" />
+                    </svg>
+                  </button>
+
+                  <button
+                    type="button"
+                    className="connections-panel__action-button connections-panel__action-button--connections-mobile"
+                    onClick={handleToggleConnections}
+                    aria-label={showConnections ? 'Hide connections' : 'Show connections'}
+                  >
+                    <svg viewBox="0 0 24 24" width="16" height="16">
+                      <path d="M10 13a5 5 0 007.07 0l1.41-1.41a5 5 0 00-7.07-7.07L9 5" stroke="currentColor" fill="none" strokeWidth="2"/>
+                      <path d="M14 11a5 5 0 00-7.07 0L5.5 12.5a5 5 0 007.07 7.07L15 19" stroke="currentColor" fill="none" strokeWidth="2"/>
+                    </svg>
+                  </button>
+
                   <input
                     ref={inputRef}
                     type="text"
@@ -414,6 +441,17 @@ function ConnectionsMode({ graphData, connections, onExit }) {
                     disabled={isHintSelecting || !query.trim()}
                   >
                     Guess
+                  </button>
+
+                  <button
+                    type="button"
+                    className={`connections-panel__action-button connections-panel__action-button--hint ${isHintSelecting ? 'is-active' : ''}`}
+                    onClick={handleHint}
+                    aria-label={isHintSelecting ? 'Cancel hint' : 'Use hint'}
+                  >
+                    <svg viewBox="0 0 24 24" width="16" height="16">
+                      <path d="M12 2a7 7 0 00-4 12c1.1.9 1.6 1.8 1.8 3h4.4c.2-1.2.7-2.1 1.8-3a7 7 0 00-4-12z" stroke="currentColor" fill="none" strokeWidth="2"/>
+                    </svg>
                   </button>
 
                   {isFocused && suggestions.length > 0 && (
@@ -462,6 +500,7 @@ function ConnectionsMode({ graphData, connections, onExit }) {
           nodes={graphData.nodes}
           onPlayAgain={newChallenge}
           onExit={handleExit}
+          constellationLabel={constellationLabel}
         />
       )}
     </div>

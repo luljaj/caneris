@@ -4,6 +4,7 @@ import './ModeSelector.css'
 const MODES = [
   { id: 'explore', label: 'Explore', icon: '' },
   { id: 'connections', label: 'Connections', icon: '' },
+  { id: 'discover', label: 'Discover', icon: '', badge: 'New' },
 ]
 
 function ModeSelector({ currentMode, onModeChange }) {
@@ -57,6 +58,9 @@ function ModeSelector({ currentMode, onModeChange }) {
           >
             <span className="mode-selector__option-icon">{mode.icon}</span>
             <span className="mode-selector__option-label">{mode.label}</span>
+            {mode.badge && (
+              <span className="mode-selector__badge">{mode.badge}</span>
+            )}
           </button>
         ))}
       </div>

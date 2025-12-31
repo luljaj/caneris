@@ -7,7 +7,8 @@ function ConnectionsSetup({
   optimalHops,
   onStart,
   onNewChallenge,
-  onExit
+  onExit,
+  constellationLabel
 }) {
   const [isExiting, setIsExiting] = useState(false)
   const exitTimeoutRef = useRef(null)
@@ -38,7 +39,12 @@ function ConnectionsSetup({
         </h2>
 
         <p className="connections-setup__subtitle">
-          Chart a course between these two artists
+          {constellationLabel && (
+            <span className="connections-setup__subtitle-label">
+              {constellationLabel}
+            </span>
+          )}
+          <span>Chart a course between these two artists</span>
         </p>
 
         <div className="connections-setup__artists">
