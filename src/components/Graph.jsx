@@ -615,17 +615,19 @@ function Graph({
   // Smooth zoom handling with dynamic min zoom based on graph bounds
   useEffect(() => {
     if (!containerRef.current || !graphRef.current) return
-    
+
     const container = containerRef.current
     let targetZoom = cameraOffset.current.k
     let currentZoom = cameraOffset.current.k
     let animationId = null
-    
-    const ZOOM_SPEED = 0.15 // How much to zoom per scroll step
-    const SMOOTH_FACTOR = 0.12 // Smoothing factor (lower = smoother but slower)
+    let lastWheelTime = 0
+
+    const ZOOM_SPEED = 0.05 // How much to zoom per scroll step (reduced for touchpad)
+    const SMOOTH_FACTOR = 0.2 // Smoothing factor (lower = smoother but slower)
     const MAX_ZOOM = 8
     const ABSOLUTE_MIN_ZOOM = 0.05 // Never go below this
     const ZOOM_OUT_PADDING = 0.7 // How much smaller than "fit" we allow (0.7 = 70% of fit)
+    const THROTTLE_MS = 16 // Throttle wheel events (~60fps)
     
     // Calculate dynamic min zoom based on graph bounds and viewport
     const getMinZoom = () => {
@@ -669,13 +671,20 @@ function Graph({
     const handleWheel = (e) => {
       // Prevent default browser zoom
       e.preventDefault()
-      
+
+      // Throttle wheel events to reduce lag
+      const now = Date.now()
+      if (now - lastWheelTime < THROTTLE_MS) {
+        return
+      }
+      lastWheelTime = now
+
       const minZoom = getMinZoom()
-      
+
       // Calculate new target zoom based on scroll direction
       const zoomDelta = e.deltaY > 0 ? -ZOOM_SPEED : ZOOM_SPEED
       targetZoom = Math.max(minZoom, Math.min(MAX_ZOOM, targetZoom * (1 + zoomDelta)))
-      
+
       // Start animation if not already running
       if (!animationId) {
         animationId = requestAnimationFrame(animateZoom)
